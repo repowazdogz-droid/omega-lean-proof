@@ -41,14 +41,33 @@ axiom compute_hash_injective :
   ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b
 
 -- The expected prev_hash for the next record appended to this chain.
+def expected_after (expected : Option ByteArray) (chain : List Record) : Option ByteArray :=
+  chain.foldl (fun _ r => some r.content_hash) expected
+
 def next_prev_hash (chain : List Record) : Option ByteArray :=
-  chain.foldl (fun _ r => some r.content_hash) none
+  expected_after none chain
 
 -- Prev-hash linkage from genesis to tip.
 def linked_from : Option ByteArray → List Record → Prop
   | _, [] => True
   | expected, r :: rest =>
       r.prev_hash = expected ∧ linked_from (some r.content_hash) rest
+
+theorem linked_from_append_single
+    (expected : Option ByteArray) (chain : List Record) (r : Record) :
+    linked_from expected chain →
+    r.prev_hash = expected_after expected chain →
+    linked_from expected (chain ++ [r]) := by
+  induction chain generalizing expected with
+  | nil =>
+      intro _ hprev
+      simp [expected_after, linked_from] at hprev ⊢
+      exact hprev
+  | cons head tail ih =>
+      intro hlinked hprev
+      simp [linked_from] at hlinked ⊢
+      exact ⟨hlinked.1, ih (some head.content_hash) hlinked.2 (by
+        simpa [expected_after] using hprev)⟩
 
 -- Sequence-number contiguity: chain[i].seq_num = i for every position i.
 -- A chain like [r0(seq=0), r1(seq=1), r3(seq=3)] is rejected because at
@@ -86,12 +105,38 @@ theorem chain_integrity_extends (chain : List Record) (r : Record) :
     r.prev_hash = next_prev_hash chain →
     r.seq_num = chain.length →
     P3_Traceability (chain ++ [r]) := by
-  sorry
+  intro hp hhash hprev hseq
+  refine ⟨?_, ?_, ?_⟩
+  · intro x hx
+    simp at hx
+    rcases hx with hx | hx
+    · exact hp.1 x hx
+    · cases hx
+      exact hhash
+  · exact linked_from_append_single none chain r hp.2.1 hprev
+  · intro i hi
+    by_cases hleft : i < chain.length
+    · rw [List.getElem_append_left hleft]
+      exact hp.2.2 i hleft
+    · have hi' : i < chain.length + 1 := by
+        simpa [List.length_append] using hi
+      have hieq : i = chain.length :=
+        Nat.eq_of_lt_succ_of_not_lt hi' hleft
+      subst i
+      have hle : chain.length ≤ chain.length := Nat.le_refl chain.length
+      rw [List.getElem_append_right hle]
+      simp [hseq]
 
 theorem chain_monotonicity (chain chain' : List Record) :
     ChainExtends chain chain' →
     chain.length ≤ chain'.length ∧ ChainExtends chain chain' := by
-  sorry
+  intro h
+  obtain ⟨suffix, hsuffix⟩ := h
+  subst chain'
+  constructor
+  · rw [List.length_append]
+    exact Nat.le_add_right chain.length suffix.length
+  · exact ⟨suffix, rfl⟩
 
 -- Proof attempt using compute_hash_injective.
 -- Sketch: in the tampered chain the tampered record's content_hash is
