@@ -14,4 +14,4 @@ package omegaProof
 @[default_target]
 lean_lib OmegaProof where
   srcDir := "."
-  roots := #[`OmegaProof, `OmegaV14]
+  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic]
