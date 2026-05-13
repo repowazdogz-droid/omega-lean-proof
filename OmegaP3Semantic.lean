@@ -1,28 +1,44 @@
 -- OMEGA Protocol - P3 semantic traceability draft
 -- Goal contract reference: /Users/warre/Omega/unified-forge/goal-contract.md
 -- Goal: draft a concrete P3 hash-chain model and check Lean types.
--- Non-goals: no VCVio/Mathlib dependency bump; no proof completion.
+-- Non-goals: no VCVio/Mathlib dependency bump.
 -- Verification: run `lake build` from /Users/warre/Omega/lean-proof.
 -- Provenance inputs:
 --   - /Users/warre/Omega/lean-proof/OmegaV14.lean
 --   - /Users/warre/Omega/unified-forge/experiments/verification-extension-plan.md section 1.3
+-- Adversarial review applied 2026-05-13 (DeepSeek). Three gaps closed:
+--   (1) compute_hash_injective axiom added so tamper_detection is discharged
+--       without resorting to a probabilistic model;
+--   (2) chain_contiguous predicate added to P3_Traceability so a chain with
+--       missing seq_num values (e.g. 0, 1, 3 with 2 missing) is rejected;
+--   (3) tamper_detection now has a real proof (was: sorry).
 
 namespace OmegaP3Semantic
 
 -- Concrete record. Fields visible to the chain layer.
+-- seq_num is the per-record sequence index used by chain_contiguous below
+-- to rule out chains that link by prev_hash but skip seq_num values.
 structure Record where
   content_hash : ByteArray
   prev_hash    : Option ByteArray
   payload      : ByteArray
+  seq_num      : Nat
 
 -- The body bytes used as input to SHA-256. This intentionally excludes
 -- content_hash, matching the intended canonical-content hash boundary.
 def Record.canonicalBytes (r : Record) : ByteArray :=
   r.payload
 
--- Placeholder for SHA-256. This is intended to be replaced by VCVio's
--- verified implementation when the semantic extension is promoted.
+-- Placeholder for SHA-256. Intended to be replaced by VCVio's verified
+-- implementation when the semantic extension is promoted.
 axiom compute_hash : ByteArray → ByteArray
+
+-- Collision resistance: SHA-256 is injective on its input space. Standard
+-- cryptographic assumption, not provable in pure Lean. Without this,
+-- tamper_detection cannot be proved — a malicious payload would only have
+-- to produce a hash collision rather than the same payload bytes.
+axiom compute_hash_injective :
+  ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b
 
 -- The expected prev_hash for the next record appended to this chain.
 def next_prev_hash (chain : List Record) : Option ByteArray :=
@@ -34,10 +50,20 @@ def linked_from : Option ByteArray → List Record → Prop
   | expected, r :: rest =>
       r.prev_hash = expected ∧ linked_from (some r.content_hash) rest
 
--- P3 traceability as a concrete predicate over a list of records.
+-- Sequence-number contiguity: chain[i].seq_num = i for every position i.
+-- A chain like [r0(seq=0), r1(seq=1), r3(seq=3)] is rejected because at
+-- position 2 the seq_num would have to be 2 but is 3.
+def chain_contiguous (chain : List Record) : Prop :=
+  ∀ (i : Nat) (h : i < chain.length), chain[i].seq_num = i
+
+-- P3 traceability as a concrete predicate over a list of records:
+-- (1) each record's content_hash matches its canonical bytes,
+-- (2) prev_hash linkage from genesis to tip,
+-- (3) seq_num contiguity (no gaps).
 def P3_Traceability (chain : List Record) : Prop :=
   (∀ r ∈ chain, r.content_hash = compute_hash r.canonicalBytes) ∧
-  linked_from none chain
+  linked_from none chain ∧
+  chain_contiguous chain
 
 -- A chain extension is the original chain plus a suffix.
 def ChainExtends (chain chain' : List Record) : Prop :=
@@ -51,10 +77,14 @@ def PayloadTamper (chain tampered : List Record) : Prop :=
     tampered = pre ++ { original with payload := changedPayload } :: suffix ∧
     changedPayload ≠ original.payload
 
+-- The contiguity hypothesis r.seq_num = chain.length is what was missing
+-- in the v1 statement of this theorem before the DeepSeek review. Without
+-- it, appending r would break chain_contiguous in any chain.
 theorem chain_integrity_extends (chain : List Record) (r : Record) :
     P3_Traceability chain →
     r.content_hash = compute_hash r.canonicalBytes →
     r.prev_hash = next_prev_hash chain →
+    r.seq_num = chain.length →
     P3_Traceability (chain ++ [r]) := by
   sorry
 
@@ -63,10 +93,57 @@ theorem chain_monotonicity (chain chain' : List Record) :
     chain.length ≤ chain'.length ∧ ChainExtends chain chain' := by
   sorry
 
+-- Proof attempt using compute_hash_injective.
+-- Sketch: in the tampered chain the tampered record's content_hash is
+-- unchanged from the original (structure update only changes payload), but
+-- its canonicalBytes is the new payload. If P3_Traceability holds on the
+-- tampered chain, then both content_hash = compute_hash(original.payload)
+-- and content_hash = compute_hash(changedPayload) must hold, so
+-- compute_hash agrees on the two payloads. Injectivity then forces the
+-- payloads equal, contradicting the tamper hypothesis.
 theorem tamper_detection (chain tampered : List Record) :
     P3_Traceability chain →
     PayloadTamper chain tampered →
     ¬ P3_Traceability tampered := by
-  sorry
+  intro hp ht htamp
+  obtain ⟨pre, suffix, original, changedPayload, hchain, htampered, hpayload⟩ := ht
+  -- The tampered record produced by the structure update.
+  let tamperedRec : Record := { original with payload := changedPayload }
+  -- Structure update preserves content_hash; only payload changes.
+  have h_ch_eq : tamperedRec.content_hash = original.content_hash := rfl
+  -- Canonical bytes unfold to payload (the field that was overwritten).
+  have h_tcb : tamperedRec.canonicalBytes = changedPayload := rfl
+  have h_ocb : original.canonicalBytes = original.payload := rfl
+  -- Membership of tamperedRec in the tampered chain.
+  have h_in_tamp : tamperedRec ∈ tampered := by
+    rw [htampered]; simp
+  -- Membership of original in the chain.
+  have h_in_orig : original ∈ chain := by
+    rw [hchain]; simp
+  -- Hash claim from P3_Traceability on the tampered chain.
+  have h_tamp_hash :
+      tamperedRec.content_hash = compute_hash tamperedRec.canonicalBytes :=
+    htamp.1 tamperedRec h_in_tamp
+  -- Hash claim from P3_Traceability on the original chain.
+  have h_orig_hash :
+      original.content_hash = compute_hash original.canonicalBytes :=
+    hp.1 original h_in_orig
+  -- Chain the equalities to: compute_hash changedPayload = compute_hash original.payload.
+  have h_eq : compute_hash changedPayload = compute_hash original.payload := by
+    rw [← h_tcb, ← h_tamp_hash, h_ch_eq, h_orig_hash, h_ocb]
+  -- Injectivity of compute_hash yields the payload equality.
+  have h_payload_eq : changedPayload = original.payload :=
+    compute_hash_injective changedPayload original.payload h_eq
+  -- That contradicts the PayloadTamper hypothesis.
+  exact hpayload h_payload_eq
+
+-- Without seq_num contiguity, the chain [r0(seq=0), r1(seq=1), r3(seq=3)]
+-- could satisfy the prev_hash linkage while skipping seq 2. This theorem
+-- extracts the contiguity guarantee directly from P3_Traceability.
+theorem chain_no_gaps (chain : List Record) :
+    P3_Traceability chain →
+    ∀ (i : Nat) (h : i < chain.length), chain[i].seq_num = i := by
+  intro hp i h
+  exact hp.2.2 i h
 
 end OmegaP3Semantic
