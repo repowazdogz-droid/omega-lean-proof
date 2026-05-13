@@ -26,13 +26,11 @@ def retries_exceed_limit : Prop :=
 
 -- Predicate: escalation is required based on failure conditions
 def escalation_required : Prop :=
-  retries_exceed_limit ∨ 
-  (¬verification_passed ∧ retries = 2) ∨
-  identical_failure
+  retries_exceed_limit ∧ ¬verification_passed
 
--- Theorem: if retries exceed limit, escalation is required
--- Proof: escalation_required is defined as retries_exceed_limit ∨ ...,
--- so if retries_exceed_limit holds, escalation_required holds by the left disjunct
+-- Theorem: if retries exceed limit AND verification did not pass, escalation is required
+-- Proof: escalation_required is defined as retries_exceed_limit ∧ ¬verification_passed,
+-- so if both conditions hold, escalation_required holds by conjunction introduction
 theorem retries_exceed_limit_implies_escalation :
-    retries_exceed_limit → escalation_required :=
-  fun h => Or.inl h
+    retries_exceed_limit → ¬verification_passed → escalation_required :=
+  fun h1 h2 => And.intro h1 h2

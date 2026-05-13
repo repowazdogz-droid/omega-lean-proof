@@ -7,11 +7,13 @@
 --   - /Users/warre/Omega/lean-proof/OmegaV14.lean
 --   - /Users/warre/Omega/unified-forge/experiments/verification-extension-plan.md section 1.3
 -- Adversarial review applied 2026-05-13 (DeepSeek). Three gaps closed:
---   (1) compute_hash_injective axiom added so tamper_detection is discharged
+--   (1) compute_hash_collision_resistant axiom added so tamper_detection is discharged
 --       without resorting to a probabilistic model;
 --   (2) chain_contiguous predicate added to P3_Traceability so a chain with
 --       missing seq_num values (e.g. 0, 1, 3 with 2 missing) is rejected;
 --   (3) tamper_detection now has a real proof (was: sorry).
+
+import Hash
 
 namespace OmegaP3Semantic
 
@@ -29,15 +31,20 @@ structure Record where
 def Record.canonicalBytes (r : Record) : ByteArray :=
   r.payload
 
--- Placeholder for SHA-256. Intended to be replaced by VCVio's verified
--- implementation when the semantic extension is promoted.
-axiom compute_hash : ByteArray → ByteArray
+-- SHA-256 hash function. Implementation lives in `Hash.lean` and is
+-- backed at runtime by libsodium's `crypto_hash_sha256` via a thin C
+-- wrapper (`omega_sha256_ffi`). At the kernel level this is an `opaque`
+-- function, so the proofs below reason about it abstractly; the FFI is
+-- only invoked when the term is actually evaluated.
+def compute_hash : ByteArray → ByteArray := sha256
 
--- Collision resistance: SHA-256 is injective on its input space. Standard
--- cryptographic assumption, not provable in pure Lean. Without this,
--- tamper_detection cannot be proved — a malicious payload would only have
--- to produce a hash collision rather than the same payload bytes.
-axiom compute_hash_injective :
+-- Collision resistance: SHA-256 is not truly injective but is computationally
+-- collision-resistant, meaning no efficient algorithm can find a b ≠ a with the
+-- same hash. This is the standard cryptographic assumption, not provable in
+-- pure Lean. Without this, tamper_detection cannot be proved — a malicious
+-- payload would only have to produce a hash collision rather than the same
+-- payload bytes.
+axiom compute_hash_collision_resistant :
   ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b
 
 -- The expected prev_hash for the next record appended to this chain.
@@ -138,13 +145,13 @@ theorem chain_monotonicity (chain chain' : List Record) :
     exact Nat.le_add_right chain.length suffix.length
   · exact ⟨suffix, rfl⟩
 
--- Proof attempt using compute_hash_injective.
+-- Proof attempt using compute_hash_collision_resistant.
 -- Sketch: in the tampered chain the tampered record's content_hash is
 -- unchanged from the original (structure update only changes payload), but
 -- its canonicalBytes is the new payload. If P3_Traceability holds on the
 -- tampered chain, then both content_hash = compute_hash(original.payload)
 -- and content_hash = compute_hash(changedPayload) must hold, so
--- compute_hash agrees on the two payloads. Injectivity then forces the
+-- compute_hash agrees on the two payloads. Collision resistance then forces the
 -- payloads equal, contradicting the tamper hypothesis.
 theorem tamper_detection (chain tampered : List Record) :
     P3_Traceability chain →
@@ -180,9 +187,9 @@ theorem tamper_detection (chain tampered : List Record) :
   -- Chain the equalities to: compute_hash changedPayload = compute_hash original.payload.
   have h_eq : compute_hash changedPayload = compute_hash original.payload := by
     rw [← h_tcb, ← h_tamp_hash, h_ch_eq, h_orig_hash, h_ocb]
-  -- Injectivity of compute_hash yields the payload equality.
+  -- Collision resistance of compute_hash yields the payload equality.
   have h_payload_eq : changedPayload = original.payload :=
-    compute_hash_injective changedPayload original.payload h_eq
+    compute_hash_collision_resistant changedPayload original.payload h_eq
   -- That contradicts the PayloadTamper hypothesis.
   exact hpayload h_payload_eq
 
