@@ -13,8 +13,6 @@
 --       missing seq_num values (e.g. 0, 1, 3 with 2 missing) is rejected;
 --   (3) tamper_detection now has a real proof (was: sorry).
 
-import Hash
-
 namespace OmegaP3Semantic
 
 -- Concrete record. Fields visible to the chain layer.
@@ -31,12 +29,14 @@ structure Record where
 def Record.canonicalBytes (r : Record) : ByteArray :=
   r.payload
 
--- SHA-256 hash function. Implementation lives in `Hash.lean` and is
--- backed at runtime by libsodium's `crypto_hash_sha256` via a thin C
--- wrapper (`omega_sha256_ffi`). At the kernel level this is an `opaque`
--- function, so the proofs below reason about it abstractly; the FFI is
--- only invoked when the term is actually evaluated.
-def compute_hash : ByteArray → ByteArray := sha256
+-- Hash primitive intended to be SHA-256. Declared `opaque` so the kernel
+-- treats it as a function whose implementation exists but is not unfolded
+-- during proof checking. This is a stronger claim than `axiom` (which only
+-- asserts existence) — it commits to "there is a real function here that
+-- will be supplied at runtime" without forcing the supply now. The
+-- intended runtime backing is libsodium's `crypto_hash_sha256` via FFI,
+-- to be wired up in a separate step that needs the libsodium toolchain.
+opaque compute_hash : ByteArray → ByteArray
 
 -- Collision resistance: SHA-256 is not truly injective but is computationally
 -- collision-resistant, meaning no efficient algorithm can find a b ≠ a with the

@@ -4,9 +4,14 @@ open Lake DSL
 /-!
 OMEGA formal proof package.
 
-Lean is pinned to `v4.18.0` (see `lean-toolchain`). VCVio is required so
-`OmegaP3Semantic` can eventually replace its `compute_hash` axiom with a
-verified SHA-256 implementation.
+Lean is pinned to `v4.18.0` (see `lean-toolchain`).
+
+VCVio is required as the cryptography-proofs framework. Its SHA-256
+implementation slot (`LibSodium/SHA2.lean`) is upstream-empty at v4.18.0,
+so `OmegaP3Semantic.compute_hash` is currently declared as an `opaque`
+function rather than wired through FFI. A future commit will swap in a
+real libsodium binding once the upstream slot is populated (or via a
+local FFI module).
 -/
 
 package omegaProof
