@@ -31,7 +31,8 @@ def escalation_required : Prop :=
   identical_failure
 
 -- Theorem: if retries exceed limit, escalation is required
--- Stated with sorry as requested — proof to be added later
+-- Proof: escalation_required is defined as retries_exceed_limit ∨ ...,
+-- so if retries_exceed_limit holds, escalation_required holds by the left disjunct
 theorem retries_exceed_limit_implies_escalation :
     retries_exceed_limit → escalation_required :=
-  sorry
+  fun h => Or.inl h
