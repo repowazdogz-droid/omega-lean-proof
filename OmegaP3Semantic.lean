@@ -288,4 +288,22 @@ theorem chain_no_gaps (chain : List Record) :
   intro hp i h
   exact hp.2.2 i h
 
+-- MIGRATION TARGET: replace with VCVio computational security proof
+-- when toolchain is bumped to v4.29.0. See VCVIO_MIGRATION.md.
+-- Shape: tamper_detection holds against any PPT adversary with
+-- non-negligible SHA-256 collision advantage.
+--
+-- Current body delegates to the deterministic tamper_detection so the
+-- API name is reserved and call sites compile against the eventual
+-- signature. The signature here is the deterministic form; on
+-- migration, this stub is replaced by the probabilistic form
+-- (negligible advantage over a security parameter) and the proof body
+-- becomes the reduction to sha256_collision_resistant.
+theorem tamper_detection_computational_stub :
+    ∀ (chain tampered : List Record),
+    P3_Traceability chain →
+    PayloadTamper chain tampered →
+    ¬ P3_Traceability tampered :=
+  tamper_detection
+
 end OmegaP3Semantic
