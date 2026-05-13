@@ -51,6 +51,18 @@ opaque compute_hash : ByteArray → ByteArray
 -- pure Lean. Without this, tamper_detection cannot be proved — a malicious
 -- payload would only have to produce a hash collision rather than the same
 -- payload bytes.
+--
+-- MODELING NOTE — trust boundary:
+-- The axiom below states true injectivity
+-- (compute_hash a = compute_hash b → a = b), which is *strictly stronger*
+-- than SHA-256's actual property of collision resistance. SHA-256 cannot be
+-- injective: it maps arbitrary-length inputs to a fixed 256-bit output, so
+-- collisions must exist by pigeonhole. We adopt the idealized injectivity
+-- assumption as a deliberate modeling choice — within this formal model
+-- SHA-256 is treated as injective. This makes the trust boundary explicit:
+-- any soundness claim flowing through `tamper_detection` depends on the
+-- absence of an exhibited SHA-256 collision in the runtime artifacts being
+-- checked, and is *not* a claim about SHA-256's mathematical structure.
 axiom compute_hash_collision_resistant :
   ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b
 
