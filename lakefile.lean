@@ -14,8 +14,16 @@ real libsodium binding once the upstream slot is populated (or via a
 local FFI module).
 -/
 
-package omegaProof
+package omegaProof where
+  -- Build options for faster compilation
+  leanOptions := #[
+    ⟨`pp.unicode.fun, true⟩,  -- pretty-prints `fun a ↦ b`
+    ⟨`autoImplicit, false⟩,
+    ⟨`relaxedAutoImplicit, false⟩
+  ]
 
+-- VCVio is required for future cryptographic proofs but not currently used
+-- We keep it as a dependency but don't build its heavy Mathlib dependency
 require VCVio from git
   "https://github.com/dtumad/VCV-io.git" @ "v4.18.0"
 
