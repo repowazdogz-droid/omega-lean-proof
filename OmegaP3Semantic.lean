@@ -31,16 +31,25 @@ structure Record where
   author_agent : String
   review_status : String
 
--- The body bytes used as input to SHA-256. Folds both seq_num and payload
--- into one byte sequence so content_hash binds both fields. seq_num is
--- encoded as a fixed 8-byte big-endian prefix and concatenated with payload.
--- This intentionally excludes content_hash itself (which is the *output* of
--- compute_hash on these bytes).
+-- The body bytes used as input to SHA-256. Folds seq_num, prev_hash, and
+-- payload into one byte sequence so content_hash binds all three fields.
+-- seq_num is a fixed 8-byte big-endian prefix; prev_hash is a 1-byte tag
+-- (0x00 = none, 0x01 = some) followed by the 32-byte hash bytes when
+-- present; payload is the trailing bytes. This intentionally excludes
+-- content_hash itself (which is the *output* of compute_hash on these
+-- bytes).
 --
--- Closes the seq_num manipulation trust boundary previously flagged on
--- chain_integrity_extends: with seq_num bound into the hash, an adversary
--- can no longer mint records whose seq_num lies about position while keeping
--- content_hash valid.
+-- Closes two attack vectors:
+--   (a) seq_num manipulation — an adversary can no longer mint records
+--       whose seq_num lies about position while keeping content_hash valid.
+--   (b) prev_hash rewrite — an adversary can no longer redirect a record's
+--       prev_hash to point at a different predecessor while keeping
+--       content_hash valid. Without prev_hash in the hash input, the only
+--       check on prev_hash is the structural linked_from predicate; a
+--       record whose hash matched but whose prev_hash differed from the
+--       predecessor's content_hash could be substituted into a different
+--       chain position. With prev_hash bound, that substitution requires a
+--       compute_hash collision.
 private def encodeSeqNum (n : Nat) : ByteArray :=
   ByteArray.mk #[
     UInt8.ofNat ((n >>> 56) &&& 0xFF),
@@ -53,22 +62,32 @@ private def encodeSeqNum (n : Nat) : ByteArray :=
     UInt8.ofNat (n &&& 0xFF)
   ]
 
+private def encodePrevHash : Option ByteArray → ByteArray
+  | none    => ByteArray.mk #[0x00]
+  | some bs => ByteArray.mk #[0x01] ++ bs
+
 def Record.canonicalBytes (r : Record) : ByteArray :=
-  encodeSeqNum r.seq_num ++ r.payload
+  encodeSeqNum r.seq_num ++ encodePrevHash r.prev_hash ++ r.payload
 
 -- The canonical encoding is injective in its hash-bound fields (seq_num,
--- payload). For the concrete encoding above this follows from the fixed
--- 8-byte big-endian seq_num prefix being uniquely decodable; we declare it
--- as an axiom rather than proving ByteArray cancellation from scratch.
+-- prev_hash, payload). seq_num is fixed-width (8 bytes); the prev_hash
+-- block is fixed-width too (1 byte for none, 33 bytes for some). The two
+-- fixed-width prefixes make the encoding uniquely decodable: payload is
+-- whatever follows. We declare injectivity as an axiom rather than proving
+-- ByteArray cancellation from scratch.
 --
--- MODELING NOTE — trust boundary:
--- Assumes seq_num < 2^64 (the 8-byte prefix wraps otherwise). Within the
--- protocol's documented operating range this holds; chains exceeding 2^64
--- records would need a wider encoding.
+-- MODELING NOTE — trust boundaries:
+--   (1) Assumes seq_num < 2^64 (the 8-byte prefix wraps otherwise).
+--   (2) Assumes any `some bs` in prev_hash has `bs.size = 32` (a SHA-256
+--       digest). If a producer were to mint records with shorter or longer
+--       prev_hash bytes, the 33-byte assumption used to recover the
+--       payload boundary would fail and injectivity would not hold for
+--       those records. Within the protocol's documented operating range
+--       (prev_hash is always a SHA-256 output) this holds.
 axiom canonicalBytes_injective :
   ∀ r1 r2 : Record,
     r1.canonicalBytes = r2.canonicalBytes →
-    r1.seq_num = r2.seq_num ∧ r1.payload = r2.payload
+    r1.seq_num = r2.seq_num ∧ r1.prev_hash = r2.prev_hash ∧ r1.payload = r2.payload
 
 -- Hash primitive intended to be SHA-256. Declared `opaque` so the kernel
 -- treats it as a function whose implementation exists but is not unfolded
@@ -160,13 +179,18 @@ def PayloadTamper (chain tampered : List Record) : Prop :=
 -- in the v1 statement of this theorem before the DeepSeek review. Without
 -- it, appending r would break chain_contiguous in any chain.
 --
--- Note on the seq_num manipulation trust boundary previously flagged here:
--- canonicalBytes now folds seq_num into the hash input (encodeSeqNum prefix
--- above canonicalBytes), so content_hash binds seq_num. Any record whose
--- seq_num lies about position would also have to break content_hash, which
--- compute_hash_collision_resistant rules out. The residual assumption is
--- that the encoding is supplied unchanged at runtime and that seq_num stays
--- within the 2^64 range the prefix encodes (see canonicalBytes_injective).
+-- Notes on previously flagged trust boundaries at this theorem:
+--   * seq_num manipulation: closed by folding seq_num into canonicalBytes
+--     (encodeSeqNum prefix). A record whose seq_num lies about position
+--     would have to break content_hash, ruled out by
+--     compute_hash_collision_resistant.
+--   * prev_hash rewrite: closed by folding prev_hash into canonicalBytes
+--     (encodePrevHash block). A record substituted into a different chain
+--     position with a different predecessor's content_hash as prev_hash
+--     would also have to break content_hash.
+-- Residual assumptions live at canonicalBytes_injective: seq_num < 2^64
+-- and any present prev_hash is a 32-byte SHA-256 digest. Both hold for
+-- chains produced by a conformant runtime.
 theorem chain_integrity_extends (chain : List Record) (r : Record) :
     P3_Traceability chain →
     r.content_hash = compute_hash r.canonicalBytes →
@@ -248,9 +272,9 @@ theorem tamper_detection (chain tampered : List Record) :
   -- Collision resistance yields canonicalBytes equality.
   have h_cb_eq : tamperedRec.canonicalBytes = original.canonicalBytes :=
     compute_hash_collision_resistant _ _ h_hash_eq
-  -- Canonical encoding is injective in (seq_num, payload).
+  -- Canonical encoding is injective in (seq_num, prev_hash, payload).
   have h_payload_eq : tamperedRec.payload = original.payload :=
-    (canonicalBytes_injective tamperedRec original h_cb_eq).2
+    (canonicalBytes_injective tamperedRec original h_cb_eq).2.2
   -- tamperedRec.payload reduces to changedPayload via the structure update,
   -- so this contradicts the PayloadTamper hypothesis.
   exact hpayload h_payload_eq
