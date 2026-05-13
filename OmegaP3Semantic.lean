@@ -160,11 +160,15 @@ theorem tamper_detection (chain tampered : List Record) :
   have h_tcb : tamperedRec.canonicalBytes = changedPayload := rfl
   have h_ocb : original.canonicalBytes = original.payload := rfl
   -- Membership of tamperedRec in the tampered chain.
+  -- On Lean 4.18 simp leaves a residual disjunct from the structure update,
+  -- so discharge explicitly via append_right + cons_self.
   have h_in_tamp : tamperedRec ∈ tampered := by
-    rw [htampered]; simp
+    rw [htampered]
+    exact List.mem_append_right pre (List.mem_cons_self _ _)
   -- Membership of original in the chain.
   have h_in_orig : original ∈ chain := by
-    rw [hchain]; simp
+    rw [hchain]
+    exact List.mem_append_right pre (List.mem_cons_self _ _)
   -- Hash claim from P3_Traceability on the tampered chain.
   have h_tamp_hash :
       tamperedRec.content_hash = compute_hash tamperedRec.canonicalBytes :=
