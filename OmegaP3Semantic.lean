@@ -125,6 +125,20 @@ def PayloadTamper (chain tampered : List Record) : Prop :=
 -- The contiguity hypothesis r.seq_num = chain.length is what was missing
 -- in the v1 statement of this theorem before the DeepSeek review. Without
 -- it, appending r would break chain_contiguous in any chain.
+--
+-- KNOWN GAP — sequence number manipulation attack (named trust boundary):
+-- chain_contiguous checks seq_num values against list positions, but seq_num
+-- is a plain Record field that is *not* covered by content_hash (compute_hash
+-- is applied to canonicalBytes = payload only). An adversary who controls
+-- record construction can therefore mint records whose seq_num values lie
+-- about their position without altering content_hash, prev_hash, or payload.
+-- The integrity theorems above still hold for chains accepted by
+-- P3_Traceability, but they do not rule out a producer who deliberately
+-- emits a chain with falsified seq_num values that happens to be contiguous
+-- by construction. Closing this gap requires either (a) folding seq_num into
+-- canonicalBytes so the hash binds it, or (b) a separate formal model of the
+-- producer's seq_num assignment. Flagged here as a trust boundary requiring
+-- further formal analysis.
 theorem chain_integrity_extends (chain : List Record) (r : Record) :
     P3_Traceability chain →
     r.content_hash = compute_hash r.canonicalBytes →
