@@ -27,4 +27,4 @@ require VCVio from git
 @[default_target]
 lean_lib OmegaProof where
   srcDir := "."
-  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance]
+  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol]
