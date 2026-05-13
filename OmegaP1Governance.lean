@@ -46,17 +46,17 @@ def P1_Governance (r : Record) : Prop :=
   valid_review_status r.review_status
 
 /-- If a record satisfies P1_Governance, its `goal_contract_ref` is
-    non-empty. Trivially provable by projection; left as `sorry`
-    intentionally so the type signature can be confirmed first. -/
+    non-empty. Direct projection of the first conjunct. -/
 theorem governance_requires_contract (r : Record) :
     P1_Governance r → r.goal_contract_ref ≠ "" := by
-  sorry
+  intro h
+  exact h.1
 
 /-- If a record satisfies P1_Governance, its `author_agent` is
-    non-empty. Trivially provable by projection; left as `sorry`
-    intentionally so the type signature can be confirmed first. -/
+    non-empty. Direct projection of the second conjunct. -/
 theorem governance_requires_agent (r : Record) :
     P1_Governance r → r.author_agent ≠ "" := by
-  sorry
+  intro h
+  exact h.2.1
 
 end OmegaP1Governance
