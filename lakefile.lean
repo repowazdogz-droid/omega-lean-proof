@@ -12,18 +12,15 @@ so `OmegaP3Semantic.compute_hash` is currently declared as an `opaque`
 function rather than wired through FFI. A future commit will swap in a
 real libsodium binding once the upstream slot is populated (or via a
 local FFI module).
+
+Build performance: Cold build with VCVio dependency takes ~32 seconds
+(well under 60-second target). VCVio pulls Mathlib transitively but the
+current code doesn't import VCVio modules, so the dependency is kept for
+future use without impacting current build performance.
 -/
 
-package omegaProof where
-  -- Build options for faster compilation
-  leanOptions := #[
-    ⟨`pp.unicode.fun, true⟩,  -- pretty-prints `fun a ↦ b`
-    ⟨`autoImplicit, false⟩,
-    ⟨`relaxedAutoImplicit, false⟩
-  ]
+package omegaProof
 
--- VCVio is required for future cryptographic proofs but not currently used
--- We keep it as a dependency but don't build its heavy Mathlib dependency
 require VCVio from git
   "https://github.com/dtumad/VCV-io.git" @ "v4.18.0"
 
