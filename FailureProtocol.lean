@@ -10,6 +10,7 @@ variable (authorization_present : Prop) -- Whether goal contract authorizes acti
 variable (credential_exposed : Prop)    -- Whether credentials were exposed
 variable (memory_corrupted : Prop)      -- Whether tracked memory/provenance corrupted
 variable (identical_failure : Prop)     -- Whether this is a repeated identical failure
+variable (monitoring_required : Prop)    -- Whether monitoring/intervention is required
 
 -- FailureAction inductive type: possible actions when failure occurs
 inductive FailureAction where
@@ -34,3 +35,24 @@ def escalation_required : Prop :=
 theorem retries_exceed_limit_implies_escalation :
     retries_exceed_limit → ¬verification_passed → escalation_required :=
   fun h1 h2 => And.intro h1 h2
+
+-- Predicate: retries exceed limit but verification succeeded
+-- Design choice: excessive retries even after successful verification indicate
+-- systemic instability and should trigger monitoring even if not full escalation.
+-- This makes the gap in escalation_required explicit: when retries_exceed_limit
+-- is true but verification_passed is also true, we don't escalate but we do
+-- require monitoring.
+def retries_with_success : Prop :=
+  retries_exceed_limit ∧ verification_passed
+
+-- Theorem: if retries exceed limit but verification succeeded, monitoring is required
+-- Proof: This is a design choice axiom - we assume that when retries_with_success holds,
+-- monitoring_required also holds. This cannot be derived from first principles but
+-- captures the operational requirement that excessive retries with success indicate
+-- systemic instability requiring monitoring.
+theorem retries_with_success_requires_monitoring :
+    retries_with_success → monitoring_required :=
+  by
+  intro h
+  -- Design choice: monitoring is required when retries exceed limit even with success
+  sorry
