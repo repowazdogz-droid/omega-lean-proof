@@ -15,7 +15,11 @@
 
 namespace OmegaP3Semantic
 
--- Concrete record. Fields visible to the chain layer.
+-- Concrete record. Fields visible to the chain layer (content_hash,
+-- prev_hash, payload, seq_num) plus the governance-attribution fields
+-- (goal_contract_ref, author_agent, review_status) used by
+-- OmegaP1Governance. The same Record structure is shared across
+-- predicates so a single artefact carries both kinds of evidence.
 -- seq_num is the per-record sequence index used by chain_contiguous below
 -- to rule out chains that link by prev_hash but skip seq_num values.
 structure Record where
@@ -23,6 +27,9 @@ structure Record where
   prev_hash    : Option ByteArray
   payload      : ByteArray
   seq_num      : Nat
+  goal_contract_ref : String
+  author_agent : String
+  review_status : String
 
 -- The body bytes used as input to SHA-256. This intentionally excludes
 -- content_hash, matching the intended canonical-content hash boundary.
