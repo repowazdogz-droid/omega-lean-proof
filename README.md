@@ -27,20 +27,20 @@ A byte-identical copy of the legacy twelve-primitive site file is preserved unde
 | [`OmegaV14.lean`](./OmegaV14.lean) (v1.4.1) | 22-conjunct `Governed` extending v1.3 with `P2_DAG`, `P6_AtomicAgency`, `P1_Freshness`, `P4T_EnvInvariant`, `P_ChainIntegrity`; 13 theorems on the same pattern | 0 | none |
 | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` with hash linkage, seq-num contiguity, and a real tamper-detection proof; 5 theorems | 0 | `compute_hash` (SHA-256 placeholder), `compute_hash_collision_resistant` (collision resistance) |
 | [`OmegaP1Governance.lean`](./OmegaP1Governance.lean) | `P1_Governance` as a concrete predicate over the contract-and-agent presence pair; 2 theorems on contract and agent necessity | 0 | none |
-| [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); 2 theorems linking retry-limit overflow to escalation and retries-with-success to monitoring | 1 | none |
+| [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); one theorem linking retry-limit overflow under failed verification to escalation. The operational rule "excess retries with success → monitor" is intentionally kept in [`failure-protocol.md`](./failure-protocol.md) rather than encoded as a Lean theorem (no derivation from first principles is possible, and a definitional rename would carry no semantic content). | 0 | none |
 
-`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` retains one `sorry` by design on `retries_with_success_requires_monitoring`: the proof obligation is a design-choice axiom that excessive-retries-with-success implies an operational monitoring requirement, which cannot be derived from first principles and is left as an explicit gap.
+`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` is `sorry`-free and axiom-free: it formalises only the retry-limit-plus-failed-verification escalation rule, which is a direct conjunction-introduction. The "excess retries with success → monitor" operational rule is documented in [`failure-protocol.md`](./failure-protocol.md); it is not derivable from the retry arithmetic and was previously a stated-with-`sorry` placeholder, which has been removed in favour of the markdown spec to avoid either a smuggled axiom or a definitionally vacuous theorem.
 
 ## Verification status (May 2026, post-toolchain-bump receipt)
 
 | Item | Status |
 |------|--------|
 | **Toolchain** | `leanprover/lean4:v4.18.0` (pinned in [`lean-toolchain`](./lean-toolchain)) |
-| **`lake build`** | All five targets build cleanly. Only warning emitted is the expected `declaration uses 'sorry'` on `FailureProtocol.retries_with_success_requires_monitoring`. |
+| **`lake build`** | All five targets build cleanly. No `declaration uses 'sorry'` warning anywhere in the tree. |
 | **Kernel typecheck (build-time)** | Lean's elaborator runs the kernel on every theorem at compile time. Clean `lake build` confirms every non-`sorry` proof typechecks. |
 | **`#print axioms` (per-target spot-checks)** | Recorded below; matches the declared axiom posture for every target. |
 | **SafeVerify replay** | **Pending.** Upstream [GasStationManager/SafeVerify](https://github.com/GasStationManager/SafeVerify) skips Lean v4.18 entirely (toolchain history goes `v4.14 → v4.20 → v4.21`); both the legacy `minif2f-kimina-check` (4.15) and `v4.21` branches reject our 4.18 `.olean` files with `incompatible header`. A SafeVerify receipt will be added once an upstream branch targeting Lean v4.18, or a Lean toolchain bump matching an existing SafeVerify branch, lands. |
-| **`sorry`** | One, by design, in `FailureProtocol.retries_with_success_requires_monitoring`. None elsewhere. |
+| **`sorry`** | None anywhere in the tree. |
 
 ### Recorded `#print axioms` receipts
 
@@ -66,10 +66,9 @@ A byte-identical copy of the legacy twelve-primitive site file is preserved unde
 'OmegaP1Governance.governance_requires_agent'    does not depend on any axioms
 
 'retries_exceed_limit_implies_escalation'    does not depend on any axioms
-'retries_with_success_requires_monitoring'   depends on axioms: [sorryAx]
 ```
 
-`propext` is a Lean built-in, not a user-declared axiom; `sorryAx` is Lean's marker for the single declared `sorry`; `compute_hash_collision_resistant` is the sole named user axiom in the package and only enters `tamper_detection`.
+`propext` is a Lean built-in, not a user-declared axiom; `compute_hash_collision_resistant` is the sole named user axiom in the package and only enters `tamper_detection`.
 
 ## Reproduce locally
 
@@ -93,7 +92,7 @@ import FailureProtocol
 #print axioms OmegaV14.p2_dag_necessary
 #print axioms OmegaP3Semantic.tamper_detection
 #print axioms OmegaP1Governance.governance_requires_contract
-#print axioms retries_with_success_requires_monitoring
+#print axioms retries_exceed_limit_implies_escalation
 EOF
 lake env lean /tmp/axioms.lean
 ```

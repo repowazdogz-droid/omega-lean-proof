@@ -1,6 +1,16 @@
 -- ============================================================
 -- OMEGA Failure Protocol — Lean 4 Formalization
--- Formalises failure-protocol.md rules as Lean 4 types and propositions
+-- ============================================================
+-- This file proves `retries_exceed_limit_implies_escalation`: when retries
+-- exceed the protocol limit and verification did not pass, escalation is
+-- required. The proof is conjunction introduction over the definitions.
+--
+-- The operational rule "excess retries with success → monitor" is part of
+-- the spec (see `failure-protocol.md`), not a logical consequence of the
+-- retry arithmetic. It is intentionally not encoded as a Lean theorem,
+-- because any such theorem would either require an axiom asserting the
+-- spec rule or collapse to a definitional rename with no semantic content.
+-- The honest place for that rule is the markdown spec, not the kernel.
 -- ============================================================
 
 -- FailureAction inductive type: possible actions when failure occurs
@@ -30,24 +40,9 @@ theorem retries_exceed_limit_implies_escalation
     escalation_required retries verification_passed :=
   fun h1 h2 => And.intro h1 h2
 
--- Predicate: retries exceed limit but verification succeeded
--- Design choice: excessive retries even after successful verification indicate
--- systemic instability and should trigger monitoring even if not full escalation.
--- This makes the gap in escalation_required explicit: when retries_exceed_limit
--- is true but verification_passed is also true, we don't escalate but we do
--- require monitoring.
+-- Predicate: retries exceed limit but verification succeeded.
+-- Carried as a definition so the operational monitoring rule (see
+-- `failure-protocol.md`) has a name to refer to. No Lean theorem is
+-- attached to it: the rule is a spec choice, not a derivable consequence.
 def retries_with_success (retries : Nat) (verification_passed : Prop) : Prop :=
   retries_exceed_limit retries ∧ verification_passed
-
--- Theorem: if retries exceed limit but verification succeeded, monitoring is required
--- Proof: This is a design choice axiom - we assume that when retries_with_success holds,
--- monitoring_required also holds. This cannot be derived from first principles but
--- captures the operational requirement that excessive retries with success indicate
--- systemic instability requiring monitoring.
-theorem retries_with_success_requires_monitoring
-    (retries : Nat) (verification_passed monitoring_required : Prop) :
-    retries_with_success retries verification_passed → monitoring_required :=
-  by
-  intro h
-  -- Design choice: monitoring is required when retries exceed limit even with success
-  sorry
