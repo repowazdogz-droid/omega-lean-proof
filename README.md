@@ -28,6 +28,8 @@ A byte-identical copy of the legacy twelve-primitive site file is preserved unde
 | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` with hash linkage, seq-num contiguity, and a real tamper-detection proof; 5 theorems | 0 | `compute_hash` (SHA-256 placeholder), `compute_hash_collision_resistant` (collision resistance) |
 | [`OmegaP1Governance.lean`](./OmegaP1Governance.lean) | `P1_Governance` as a concrete predicate over the contract-and-agent presence pair; 2 theorems on contract and agent necessity | 0 | none |
 | [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); one theorem linking retry-limit overflow under failed verification to escalation. The operational rule "excess retries with success → monitor" is intentionally kept in [`failure-protocol.md`](./failure-protocol.md) rather than encoded as a Lean theorem (no derivation from first principles is possible, and a definitional rename would carry no semantic content). | 0 | none |
+| [`OmegaHashChain.lean`](./OmegaHashChain.lean) | Append-only hash chain lemmas over `OmegaP3Semantic.Record`; `omega_chain_append_only`, `valid_chain_extend` | 0 | none |
+| [`OmegaGovernance.lean`](./OmegaGovernance.lean) | Decision-gravity partial order on `GovernanceLevel` (G1–G4); reflexivity, transitivity, antisymmetry | 0 | none |
 
 `OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` is `sorry`-free and axiom-free: it formalises only the retry-limit-plus-failed-verification escalation rule, which is a direct conjunction-introduction. The "excess retries with success → monitor" operational rule is documented in [`failure-protocol.md`](./failure-protocol.md); it is not derivable from the retry arithmetic and was previously a stated-with-`sorry` placeholder, which has been removed in favour of the markdown spec to avoid either a smuggled axiom or a definitionally vacuous theorem.
 
@@ -35,12 +37,13 @@ A byte-identical copy of the legacy twelve-primitive site file is preserved unde
 
 | Item | Status |
 |------|--------|
-| **Toolchain** | `leanprover/lean4:v4.18.0` (pinned in [`lean-toolchain`](./lean-toolchain)) |
-| **`lake build`** | All five targets build cleanly. No `declaration uses 'sorry'` warning anywhere in the tree. |
+| **Toolchain** | `leanprover/lean4:v4.27.0` (pinned in [`lean-toolchain`](./lean-toolchain)) |
+| **`lake build`** | All seven shipped targets build cleanly. No `declaration uses 'sorry'` warning in shipped roots. |
 | **Kernel typecheck (build-time)** | Lean's elaborator runs the kernel on every theorem at compile time. Clean `lake build` confirms every non-`sorry` proof typechecks. |
 | **`#print axioms` (per-target spot-checks)** | Recorded below; matches the declared axiom posture for every target. |
-| **SafeVerify replay** | **Pending.** Upstream [GasStationManager/SafeVerify](https://github.com/GasStationManager/SafeVerify) skips Lean v4.18 entirely (toolchain history goes `v4.14 → v4.20 → v4.21`); both the legacy `minif2f-kimina-check` (4.15) and `v4.21` branches reject our 4.18 `.olean` files with `incompatible header`. A SafeVerify receipt will be added once an upstream branch targeting Lean v4.18, or a Lean toolchain bump matching an existing SafeVerify branch, lands. |
-| **`sorry`** | None anywhere in the tree. |
+| **SafeVerify replay** | **Pass** (2026-05-19). [SafeVerify](https://github.com/GasStationManager/SafeVerify) `main` @ Lean v4.27.0 replays `OmegaProof.olean` (38 declarations) and `OmegaV14.olean` (14 declarations) with allowed axioms only. |
+| **lean4lean** | **Not used for attestation.** lean4lean @ v4.29.0 segfaults (exit 139) / deep-recursion on `OmegaProof`; toolchain pinned to v4.27.0 for SafeVerify compatibility instead. |
+| **`sorry` (shipped roots)** | None. `OmegaV15.lean` (parallel v1.5, not in Lake roots) retains one open `sorry`. |
 
 ### Recorded `#print axioms` receipts
 
@@ -97,25 +100,31 @@ EOF
 lake env lean /tmp/axioms.lean
 ```
 
-## SafeVerify status (deferred)
+## SafeVerify status (2026-05-19)
 
-Earlier verification rounds used [SafeVerify](https://github.com/GasStationManager/SafeVerify) `Environment.replay` on a built `.olean`, on the `minif2f-kimina-check` branch pinned to Lean v4.15.0. The recent toolchain bump to v4.18.0 (required by VCVio for the SHA-256 substitution) lost binary compatibility with that SafeVerify branch, and upstream SafeVerify does not currently ship a v4.18-compatible branch. The available branches `minif2f-kimina-check` (v4.15) and `v4.21` both reject 4.18 oleans:
+[SafeVerify](https://github.com/GasStationManager/SafeVerify) `main` is pinned to Lean **v4.27.0**, matching this package's `lean-toolchain`.
 
+Reproduce the external verifier replay:
+
+```bash
+cd lean-proof
+lake build
+lake env lean -o /tmp/OmegaProof.olean OmegaProof.lean
+lake env lean -o /tmp/OmegaV14.olean OmegaV14.lean
+# Build SafeVerify once (cached under lean-proof/.cache/SafeVerify)
+cd .cache/SafeVerify && lake build safe_verify && cd ../..
+.cache/SafeVerify/.lake/build/bin/safe_verify /tmp/OmegaProof.olean /tmp/OmegaProof.olean
+.cache/SafeVerify/.lake/build/bin/safe_verify /tmp/OmegaV14.olean /tmp/OmegaV14.olean
 ```
-Replaying .../OmegaProof.olean
-uncaught exception: failed to read file '...', incompatible header
-```
 
-Two paths forward are open, neither pursued in this commit:
-1. Bump `lean-toolchain` to v4.21.0 and re-verify VCVio compatibility, allowing SafeVerify `v4.21` to replay the resulting oleans.
-2. Wait for an upstream SafeVerify branch matching Lean v4.18 (or maintain a fork pinned to v4.18 + Mathlib v4.18).
+Expected output: `SafeVerify check passed.` for both files.
 
-In the interim, the verification stack is: clean `lake build` under Lean v4.18.0 (which exercises Lean's kernel on every theorem during elaboration) plus the `#print axioms` receipts above.
+**lean4lean** (Mario Carneiro, v4.29.0) was evaluated first per preference order but segfaulted / hit kernel deep-recursion on `OmegaProof`; attestation uses SafeVerify instead.
 
 ## Toolchain and Mathlib
 
-- **Mathlib:** not required for this proof package itself (no `import Mathlib`). Mathlib is pulled transitively only via the VCVio dependency, which is required at lake-level but not imported by any of the current source files.
-- The `v4.18.0` pin matches the [`leanprover-community/mathlib4`](https://github.com/leanprover-community/mathlib4) tag **v4.18.0** if you extend the package later.
+- **Mathlib:** not required for shipped proof modules (no direct `import Mathlib`). Mathlib is pulled transitively via VCVio (lake-level dependency; build with `lake build VCVio` when probing crypto imports).
+- The `v4.27.0` pin matches [SafeVerify `main`](https://github.com/GasStationManager/SafeVerify) and [`VCVio` v4.27.0](https://github.com/dtumad/VCV-io).
 
 ## Next step
 

@@ -4,10 +4,10 @@ open Lake DSL
 /-!
 OMEGA formal proof package.
 
-Lean is pinned to `v4.18.0` (see `lean-toolchain`).
+Lean is pinned to `v4.27.0` (see `lean-toolchain`).
 
 VCVio is required as the cryptography-proofs framework. Its SHA-256
-implementation slot (`LibSodium/SHA2.lean`) is upstream-empty at v4.18.0,
+implementation slot (`LibSodium/SHA2.lean`) is upstream-empty at v4.27.0,
 so `OmegaP3Semantic.compute_hash` is currently declared as an `opaque`
 function rather than wired through FFI. A future commit will swap in a
 real libsodium binding once the upstream slot is populated (or via a
@@ -22,9 +22,9 @@ future use without impacting current build performance.
 package omegaProof
 
 require VCVio from git
-  "https://github.com/dtumad/VCV-io.git" @ "v4.18.0"
+  "https://github.com/dtumad/VCV-io.git" @ "v4.27.0"
 
 @[default_target]
 lean_lib OmegaProof where
   srcDir := "."
-  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol]
+  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol, `OmegaHashChain, `OmegaGovernance]

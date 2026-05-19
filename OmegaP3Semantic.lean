@@ -96,6 +96,11 @@ axiom canonicalBytes_injective :
 -- will be supplied at runtime" without forcing the supply now. The
 -- intended runtime backing is libsodium's `crypto_hash_sha256` via FFI,
 -- to be wired up in a separate step that needs the libsodium toolchain.
+--
+-- TODO(VCVio): replace with `VCVio.CryptoFoundations.HardnessAssumptions.CollisionResistance`
+-- oracle-model proof once `LibSodium/SHA2.lean` is populated (empty at v4.27.0).
+-- Probe import: `lean-proof/probes/VCVioProbe.lean`. See `docs/lean-axioms.md` and
+-- `lean-proof/VCVIO_MIGRATION.md`.
 opaque compute_hash : ByteArray → ByteArray
 
 -- Collision resistance: SHA-256 is not truly injective but is computationally
@@ -252,11 +257,11 @@ theorem tamper_detection (chain tampered : List Record) :
   -- so discharge explicitly via append_right + cons_self.
   have h_in_tamp : tamperedRec ∈ tampered := by
     rw [htampered]
-    exact List.mem_append_right pre (List.mem_cons_self _ _)
+    exact List.mem_append_right pre (List.Mem.head suffix)
   -- Membership of original in the chain.
   have h_in_orig : original ∈ chain := by
     rw [hchain]
-    exact List.mem_append_right pre (List.mem_cons_self _ _)
+    exact List.mem_append_right pre (List.Mem.head suffix)
   -- Hash claim from P3_Traceability on the tampered chain.
   have h_tamp_hash :
       tamperedRec.content_hash = compute_hash tamperedRec.canonicalBytes :=
