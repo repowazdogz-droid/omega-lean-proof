@@ -1,9 +1,15 @@
 # omega-lean-proof
 
+**Layer:** Doctrine
+
+## Position in OMEGA Lab
+
+Formal predicate scaffolding — not deployment attestation. Lean proves statements about *definitions*, not that production systems satisfy them. See [failure-protocol.md](./failure-protocol.md). Implementation status: [omega-contracts PRIMITIVE_MAP](https://github.com/repowazdogz-droid/omega-contracts/blob/main/docs/PRIMITIVE_MAP.md) (Lean = conceptual/doctrine). Assurance boundary: [docs/ASSURANCE_BOUNDARY.md](./docs/ASSURANCE_BOUNDARY.md).
+
 Public [Lake](https://github.com/leanprover/lean4) package for the **OMEGA Protocol v1.3** Lean 4 scaffolding: [`OmegaProof.lean`](./OmegaProof.lean).
 
 **Project site:** [omegaprotocol.org](https://omegaprotocol.org/)  
-**Formal proof page:** [omegaprotocol.org/omega/formal-proof/](https://omegaprotocol.org/omega/formal-proof/)
+**Public doctrine page (scaffolding):** [omegaprotocol.org/omega/formal-proof/](https://omegaprotocol.org/omega/formal-proof/)
 
 Licensed under the [MIT License](./LICENSE).
 
