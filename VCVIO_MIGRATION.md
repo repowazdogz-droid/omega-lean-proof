@@ -3,6 +3,14 @@
 Date: 2026-05-13
 Status: assessment only, not yet started
 
+> [Updated 2026-06-07] This assessment was written when the package pinned Lean
+> and the VCVio dependency at v4.18.0. Since then the `lean-toolchain` and the
+> `lakefile.lean` VCVio `require` were both bumped to **v4.27.0** (2026-05-19).
+> References below to "current v4.18.0 pin" are therefore historical; read them
+> as v4.27.0 for the present state. The forward migration target for verified
+> SHA-256 collision resistance is still a newer VCVio (v4.29.0+ / `main`), so
+> the substance of the plan stands; only the starting pin has moved.
+
 ## Goal
 
 Replace the current idealised axiom in `OmegaP3Semantic.lean`:

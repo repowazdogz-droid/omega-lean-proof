@@ -48,22 +48,22 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 |------|----------|------------------|--------------------------------------|
 | [`OmegaProof.lean`](./OmegaProof.lean) (v1.3) | 17-conjunct `Governed`, 37 theorems: necessity projections, joint sufficiency, contrapositive absence, biconditional, packaging | 0 | none |
 | [`OmegaV14.lean`](./OmegaV14.lean) (v1.4.1) | 22-conjunct `Governed` extending v1.3 with `P2_DAG`, `P6_AtomicAgency`, `P1_Freshness`, `P4T_EnvInvariant`, `P_ChainIntegrity`; 13 theorems on the same pattern | 0 | none |
-| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` with hash linkage, seq-num contiguity, and a real tamper-detection proof; 5 theorems | 0 | `compute_hash` (SHA-256 placeholder), `compute_hash_collision_resistant` (collision resistance) |
+| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` with hash linkage, seq-num contiguity, and a real tamper-detection proof; 5 theorems | 0 | `compute_hash` (opaque SHA-256 placeholder), `canonicalBytes_injective` (canonical-byte-encoding injectivity), `compute_hash_collision_resistant` (collision resistance) |
 | [`OmegaP1Governance.lean`](./OmegaP1Governance.lean) | `P1_Governance` as a concrete predicate over the contract-and-agent presence pair; 2 theorems on contract and agent necessity | 0 | none |
-| [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); 2 theorems linking retry-limit overflow to escalation and retries-with-success to monitoring | 1 | none |
+| [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); 1 theorem linking retry-limit overflow to escalation. The retries-with-success monitoring rule is a spec choice in [`failure-protocol.md`](./failure-protocol.md), carried in Lean only as a `def retries_with_success`, not a theorem | 0 | none |
 
-`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` retains one `sorry` by design on `retries_with_success_requires_monitoring`: the proof obligation is a design-choice axiom that excessive-retries-with-success implies an operational monitoring requirement, which cannot be derived from first principles and is left as an explicit gap.
+`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces three named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below), `canonicalBytes_injective` (canonical-byte-encoding injectivity, an explicitly declared assumption), and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Both `canonicalBytes_injective` and `compute_hash_collision_resistant` propagate into theorem dependencies via `tamper_detection`, so that theorem depends on `[propext, canonicalBytes_injective, compute_hash_collision_resistant]`; the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` is now `sorry`-free: the earlier deliberate `sorry` on `retries_with_success_requires_monitoring` has been retired by removing that theorem entirely. The operational rule (excessive retries with success implies a monitoring requirement) is not derivable from the retry arithmetic, so it lives where it belongs, in the spec [`failure-protocol.md`](./failure-protocol.md); Lean keeps only a `def retries_with_success` to give the rule a name. All seven shipped roots are `sorry`-free.
 
 ## Verification status (May 2026, post-toolchain-bump receipt)
 
 | Item | Status |
 |------|--------|
-| **Toolchain** | `leanprover/lean4:v4.18.0` (pinned in [`lean-toolchain`](./lean-toolchain)) |
-| **`lake build`** | All five targets build cleanly. Only warning emitted is the expected `declaration uses 'sorry'` on `FailureProtocol.retries_with_success_requires_monitoring`. |
+| **Toolchain** | `leanprover/lean4:v4.27.0` (pinned in [`lean-toolchain`](./lean-toolchain)). Bumped from v4.18.0 on 2026-05-19 to restore SafeVerify replay; see [`Docs/lean-verification-upgrade-2026-05-19.md`](../Docs/lean-verification-upgrade-2026-05-19.md). (Sibling proof repos pin their own toolchains: PolicyWitness is on v4.27.0, the honest-layer cross-layer witness on v4.30.0.) |
+| **`lake build`** | All shipped roots build cleanly. No `declaration uses 'sorry'` warning is emitted: the tree is `sorry`-free. |
 | **Kernel typecheck (build-time)** | Lean's elaborator runs the kernel on every theorem at compile time. Clean `lake build` confirms every non-`sorry` proof typechecks. |
 | **`#print axioms` (per-target spot-checks)** | Recorded below; matches the declared axiom posture for every target. |
 | **SafeVerify replay** | **Pass** (2026-05-19): SafeVerify `main` @ Lean v4.27.0 on `OmegaProof.olean`, `OmegaV14.olean` (see formal-proof page). |
-| **`sorry`** | One, by design, in `FailureProtocol.retries_with_success_requires_monitoring`. None elsewhere. |
+| **`sorry`** | None. The earlier deliberate `sorry` was retired by removing `retries_with_success_requires_monitoring`; all seven shipped roots are `sorry`-free. (`OmegaV15.lean`, the parallel v1.5 work-in-progress, is **not** a Lake root and still carries one open `sorry`.) |
 
 ### Recorded `#print axioms` receipts
 
@@ -82,17 +82,16 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 'OmegaP3Semantic.linked_from_append_single' depends on axioms: [propext]
 'OmegaP3Semantic.chain_integrity_extends'  depends on axioms: [propext]
 'OmegaP3Semantic.chain_monotonicity'       depends on axioms: [propext]
-'OmegaP3Semantic.tamper_detection'         depends on axioms: [OmegaP3Semantic.compute_hash_collision_resistant]
+'OmegaP3Semantic.tamper_detection'         depends on axioms: [propext, OmegaP3Semantic.canonicalBytes_injective, OmegaP3Semantic.compute_hash_collision_resistant]
 'OmegaP3Semantic.chain_no_gaps' does not depend on any axioms
 
 'OmegaP1Governance.governance_requires_contract' does not depend on any axioms
 'OmegaP1Governance.governance_requires_agent'    does not depend on any axioms
 
 'retries_exceed_limit_implies_escalation'    does not depend on any axioms
-'retries_with_success_requires_monitoring'   depends on axioms: [sorryAx]
 ```
 
-`propext` is a Lean built-in, not a user-declared axiom; `sorryAx` is Lean's marker for the single declared `sorry`; `compute_hash_collision_resistant` is the sole named user axiom in the package and only enters `tamper_detection`.
+`propext` is a Lean built-in, not a user-declared axiom. The package declares exactly two named user axioms, both in `OmegaP3Semantic.lean` and both flowing only into `tamper_detection`: `canonicalBytes_injective` (canonical-byte-encoding injectivity) and `compute_hash_collision_resistant` (SHA-256 collision resistance). There is no `sorryAx` anywhere in the shipped roots: the earlier deliberate `sorry` was retired by removing `retries_with_success_requires_monitoring`, and `#print axioms` on it now reports an unknown constant rather than `[sorryAx]`.
 
 ## Reproduce locally
 
@@ -116,34 +115,27 @@ import FailureProtocol
 #print axioms OmegaV14.p2_dag_necessary
 #print axioms OmegaP3Semantic.tamper_detection
 #print axioms OmegaP1Governance.governance_requires_contract
-#print axioms retries_with_success_requires_monitoring
+#print axioms retries_exceed_limit_implies_escalation
 EOF
 lake env lean /tmp/axioms.lean
 ```
 
-## SafeVerify status (deferred)
+## SafeVerify status (passed)
 
-Earlier verification rounds used [SafeVerify](https://github.com/GasStationManager/SafeVerify) `Environment.replay` on a built `.olean`, on the `minif2f-kimina-check` branch pinned to Lean v4.15.0. The recent toolchain bump to v4.18.0 (required by VCVio for the SHA-256 substitution) lost binary compatibility with that SafeVerify branch, and upstream SafeVerify does not currently ship a v4.18-compatible branch. The available branches `minif2f-kimina-check` (v4.15) and `v4.21` both reject 4.18 oleans:
+Earlier verification rounds used [SafeVerify](https://github.com/GasStationManager/SafeVerify) `Environment.replay` on a built `.olean`, on the `minif2f-kimina-check` branch pinned to Lean v4.15.0. An interim bump to v4.18.0 (for the VCVio SHA-256 substitution work) had lost binary compatibility with the available SafeVerify branches, which left replay deferred for a time. That gap is now closed: on 2026-05-19 the toolchain was bumped to **v4.27.0**, and SafeVerify `main` @ Lean v4.27.0 replayed `OmegaProof.olean` (38 declarations) and `OmegaV14.olean` (14 declarations) with allowed axioms only, **pass**. See [`Docs/lean-verification-upgrade-2026-05-19.md`](../Docs/lean-verification-upgrade-2026-05-19.md) for the bump receipt.
 
-```
-Replaying .../OmegaProof.olean
-uncaught exception: failed to read file '...', incompatible header
-```
+`lean4lean` @ v4.29.0 was evaluated first as the preferred verifier but segfaults / hits kernel deep-recursion on `OmegaProof`, so attestation uses SafeVerify at v4.27.0.
 
-Two paths forward are open, neither pursued in this commit:
-1. Bump `lean-toolchain` to v4.21.0 and re-verify VCVio compatibility, allowing SafeVerify `v4.21` to replay the resulting oleans.
-2. Wait for an upstream SafeVerify branch matching Lean v4.18 (or maintain a fork pinned to v4.18 + Mathlib v4.18).
-
-In the interim, the verification stack is: clean `lake build` under Lean v4.18.0 (which exercises Lean's kernel on every theorem during elaboration) plus the `#print axioms` receipts above.
+The verification stack is therefore: clean `lake build` under Lean v4.27.0 (which exercises Lean's kernel on every theorem during elaboration), plus the `#print axioms` receipts above, plus the external SafeVerify replay.
 
 ## Toolchain and Mathlib
 
 - **Mathlib:** not required for this proof package itself (no `import Mathlib`). Mathlib is pulled transitively only via the VCVio dependency, which is required at lake-level but not imported by any of the current source files.
-- The `v4.18.0` pin matches the [`leanprover-community/mathlib4`](https://github.com/leanprover-community/mathlib4) tag **v4.18.0** if you extend the package later.
+- The `v4.27.0` pin matches the [`leanprover-community/mathlib4`](https://github.com/leanprover-community/mathlib4) tag **v4.27.0** if you extend the package later.
 
 ## Next step
 
-The next major step is to replace the `compute_hash` opaque declaration in `OmegaP3Semantic.lean` with the verified SHA-256 implementation from [VCVio](https://github.com/dtumad/VCV-io). VCVio's `LibSodium/SHA2.lean` slot is upstream-empty at v4.18.0; a future commit will wire it through (or via a local FFI module) once that slot is populated. After the substitution, `OmegaP3Semantic` will rest on one fewer named declaration; only `compute_hash_collision_resistant` (collision resistance) remains as the irreducible cryptographic assumption.
+The next major step is to replace the `compute_hash` opaque declaration in `OmegaP3Semantic.lean` with the verified SHA-256 implementation from [VCVio](https://github.com/dtumad/VCV-io). VCVio's `LibSodium/SHA2.lean` slot is upstream-empty at v4.27.0; a future commit will wire it through (or via a local FFI module) once that slot is populated. After the substitution, `OmegaP3Semantic` will rest on one fewer named declaration; only `compute_hash_collision_resistant` (collision resistance) remains as the irreducible cryptographic assumption.
 
 ## Legacy path on the public site
 
