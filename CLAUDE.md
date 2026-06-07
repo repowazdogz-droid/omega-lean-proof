@@ -1,0 +1,89 @@
+# lean-proof
+
+## PURPOSE
+Public Lean 4 Lake package formalising the OMEGA `Governed` predicate
+(v1.3 17-conjunct, v1.4.1 22-conjunct), the `P3_Traceability` concrete hash
+chain, `P1_Governance`, the `FailureProtocol` escalation rule, an append-only
+`OmegaHashChain`, and an `OmegaGovernance` decision-gravity partial order.
+This is **doctrine-layer scaffolding** — Lean proves statements about
+*definitions*, not that production systems satisfy them (see
+`docs/ASSURANCE_BOUNDARY.md` and `failure-protocol.md`).
+
+## STATUS
+Live. Toolchain pinned `leanprover/lean4:v4.27.0`. All seven shipped Lake
+roots build cleanly with **zero `sorry`** in shipped modules. SafeVerify
+(@ Lean v4.27.0) replay **pass** as of 2026-05-19. `OmegaV15.lean` (parallel
+v1.5) is **not** in Lake roots and still has one open `sorry`. HEAD
+`743187a` ("docs: clarify doctrine scope and operational assurance
+boundaries").
+
+## STACK
+- Lean 4 v4.27.0 (`lean-toolchain` pinned).
+- Lake build system (`lakefile.lean`).
+- `VCVio` from `https://github.com/dtumad/VCV-io.git` @ tag `v4.27.0` —
+  required as crypto-proofs framework; pulls Mathlib transitively but the
+  shipped modules do **not** import VCVio (kept for future SHA-256 wiring).
+- External verifier: SafeVerify `main` @ Lean v4.27.0 (cached under
+  `.cache/SafeVerify`).
+
+## ENTRY POINTS
+- `lakefile.lean` — package `omegaProof`, default target `OmegaProof` library.
+  Roots: `OmegaProof, OmegaV14, OmegaP3Semantic, OmegaP1Governance,
+  FailureProtocol, OmegaHashChain, OmegaGovernance`.
+- `OmegaProof.lean` (v1.3, 17-conjunct, 37 theorems).
+- `OmegaV14.lean` (v1.4.1, 22-conjunct, 13 theorems).
+- `OmegaP3Semantic.lean` — concrete hash-chain predicate, real
+  tamper-detection proof.
+- `OmegaP1Governance.lean` — contract+agent presence predicate.
+- `FailureProtocol.lean` + `failure-protocol.md` — six-case `FailureAction`
+  inductive; one theorem (`retries_exceed_limit_implies_escalation`).
+- `OmegaHashChain.lean`, `OmegaGovernance.lean` — append-only chain lemmas
+  and G1–G4 decision-gravity partial order.
+- `OmegaV15.lean` — parallel v1.5 work-in-progress, not in Lake roots.
+- `probes/AxiomProbe.lean`, `probes/VCVioProbe.lean` — reproducibility probes.
+- `v12-source/omega_v12_lean4_proof.lean` — byte-identical legacy v1.2 copy
+  for provenance; **not** built by Lake.
+- `VCVIO_MIGRATION.md` — migration assessment for the SHA-256 swap.
+
+## CONVENTIONS
+- Shipped modules use only `Prop`, `∧`, `¬`, `fun`, `Iff` (except
+  `OmegaP3Semantic` which has three named declarations: `compute_hash`
+  opaque, and the two axioms `canonicalBytes_injective` and
+  `compute_hash_collision_resistant`).
+- No `import Mathlib` in shipped modules; Mathlib only enters transitively
+  via VCVio at the lake level.
+- `#print axioms` receipts recorded in `README.md` — update when adding any
+  axiom-bearing theorem.
+- `sorry` is banned in Lake roots. WIP versions (e.g. `OmegaV15`) live
+  outside the root list until clean.
+- Tests/probes are `.lean` files invoked via `lake env lean <file>`.
+
+## DEPENDENCIES
+- External: VCVio @ v4.27.0 (lake `require`), Mathlib (transitive via
+  VCVio), SafeVerify @ v4.27.0 (external verifier, cached locally).
+- Toolchain: `leanprover/lean4:v4.27.0` only — pinned for SafeVerify
+  compatibility; do not bump without rerunning the SafeVerify pipeline.
+- Internal: implementation-status map at
+  `omega-contracts/docs/PRIMITIVE_MAP.md` (Lean = conceptual/doctrine layer).
+
+## GOTCHAS
+- **Toolchain is pinned.** Do not bump past v4.27.0 — lean4lean @ v4.29.0
+  segfaults / hits kernel deep-recursion on `OmegaProof`, and SafeVerify is
+  pinned to v4.27.0. Bumping breaks attestation.
+- VCVio's `LibSodium/SHA2.lean` slot is **upstream-empty** at v4.27.0 —
+  `OmegaP3Semantic.compute_hash` is declared `opaque` until the slot is
+  populated (see `VCVIO_MIGRATION.md` and the "Next step" section of
+  README.md).
+- `canonicalBytes_injective` and `compute_hash_collision_resistant` are the
+  two user-declared axioms in shipped modules; both live in
+  `OmegaP3Semantic.lean` and both enter only `tamper_detection`.
+- Cold build with VCVio is ~32 s (well under 60 s target). Pulling Mathlib
+  transitively can blow `.lake/` to several GB.
+- `OmegaV15.lean` is intentionally not a Lake root — do not add it without
+  closing its `sorry`.
+- Lean is a doctrine layer — do not claim Lean proofs cover runtime
+  behaviour. See `docs/ASSURANCE_BOUNDARY.md` before writing assurance
+  claims.
+
+## LAST UPDATED
+2026-05-26
