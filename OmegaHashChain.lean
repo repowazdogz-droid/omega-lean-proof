@@ -25,10 +25,14 @@ theorem omega_chain_append_only
   intro _ _ i hi
   rw [List.getElem_append_left hi]
 
-/-- Extending a valid chain by one conformant record yields a valid chain. -/
+/-- Extending a valid chain by one conformant record yields a valid chain.
+    The `r.WF` hypothesis (seq_num < 2^64, 32-byte prev_hash) was added in
+    the 2026-06-09 soundness pass: P3_Traceability now carries
+    well-formedness so encoding injectivity is a theorem, not an axiom. -/
 theorem valid_chain_extend
     (chain : List OmegaRecord) (r : OmegaRecord) :
     valid_chain chain →
+    r.WF →
     r.content_hash = compute_hash r.canonicalBytes →
     r.prev_hash = next_prev_hash chain →
     r.seq_num = chain.length →

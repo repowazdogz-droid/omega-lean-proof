@@ -47,9 +47,10 @@ boundaries").
 
 ## CONVENTIONS
 - Shipped modules use only `Prop`, `∧`, `¬`, `fun`, `Iff` (except
-  `OmegaP3Semantic` which has three named declarations: `compute_hash`
-  opaque, and the two axioms `canonicalBytes_injective` and
-  `compute_hash_collision_resistant`).
+  `OmegaP3Semantic` which has two named declarations: `compute_hash`
+  opaque and the single axiom `compute_hash_collision_resistant`; the
+  former `canonicalBytes_injective` axiom was false and is now the proven
+  theorem `canonicalBytes_injective_wf` on WF records).
 - No `import Mathlib` in shipped modules; Mathlib only enters transitively
   via VCVio at the lake level.
 - `#print axioms` receipts recorded in `README.md` — update when adding any
@@ -74,9 +75,12 @@ boundaries").
   `OmegaP3Semantic.compute_hash` is declared `opaque` until the slot is
   populated (see `VCVIO_MIGRATION.md` and the "Next step" section of
   README.md).
-- `canonicalBytes_injective` and `compute_hash_collision_resistant` are the
-  two user-declared axioms in shipped modules; both live in
-  `OmegaP3Semantic.lean` and both enter only `tamper_detection`.
+- `compute_hash_collision_resistant` is the SOLE user-declared axiom in
+  shipped modules; it lives in `OmegaP3Semantic.lean` and enters only
+  `tamper_detection`. The former second axiom `canonicalBytes_injective`
+  was removed 2026-06-09 (it was false in the model — see the
+  machine-checked `old_axiom_was_false` theorems and the
+  `docs/ASSURANCE_BOUNDARY.md` changelog).
 - Cold build with VCVio is ~32 s (well under 60 s target). Pulling Mathlib
   transitively can blow `.lake/` to several GB.
 - `OmegaV15.lean` is intentionally not a Lake root — do not add it without

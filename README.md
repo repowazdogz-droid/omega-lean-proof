@@ -48,11 +48,24 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 |------|----------|------------------|--------------------------------------|
 | [`OmegaProof.lean`](./OmegaProof.lean) (v1.3) | 17-conjunct `Governed`, 37 theorems: necessity projections, joint sufficiency, contrapositive absence, biconditional, packaging | 0 | none |
 | [`OmegaV14.lean`](./OmegaV14.lean) (v1.4.1) | 22-conjunct `Governed` extending v1.3 with `P2_DAG`, `P6_AtomicAgency`, `P1_Freshness`, `P4T_EnvInvariant`, `P_ChainIntegrity`; 13 theorems on the same pattern | 0 | none |
-| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` with hash linkage, seq-num contiguity, and a real tamper-detection proof; 5 theorems | 0 | `compute_hash` (SHA-256 placeholder), `compute_hash_collision_resistant` (collision resistance) |
+| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` (well-formedness, hash linkage, seq-num contiguity), a verified canonical-encoding decoder with proven injectivity on WF records, a real tamper-detection proof, and two machine-checked counterexample theorems documenting the removed `canonicalBytes_injective` axiom | 0 | `compute_hash` (SHA-256 placeholder, `opaque`), `compute_hash_collision_resistant` (idealised collision resistance) — the sole user axiom |
 | [`OmegaP1Governance.lean`](./OmegaP1Governance.lean) | `P1_Governance` as a concrete predicate over the contract-and-agent presence pair; 2 theorems on contract and agent necessity | 0 | none |
 | [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); 2 theorems linking retry-limit overflow to escalation and retries-with-success to monitoring | 1 | none |
 
-`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (collision resistance, a standard cryptographic assumption). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the other four theorems in that file depend only on `propext`. `FailureProtocol.lean` retains one `sorry` by design on `retries_with_success_requires_monitoring`: the proof obligation is a design-choice axiom that excessive-retries-with-success implies an operational monitoring requirement, which cannot be derived from first principles and is left as an explicit gap.
+`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces two named declarations — `compute_hash` (an `opaque` SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below) and `compute_hash_collision_resistant` (idealised collision resistance, the **sole user axiom** in the package). Only `compute_hash_collision_resistant` propagates into theorem dependencies (via `tamper_detection`); the encoding-injectivity theorem `canonicalBytes_injective_wf` and the decoder roundtrip `decode_encode` depend on no user axioms. `FailureProtocol.lean` retains one `sorry` by design on `retries_with_success_requires_monitoring`: the proof obligation is a design-choice axiom that excessive-retries-with-success implies an operational monitoring requirement, which cannot be derived from first principles and is left as an explicit gap.
+
+> **Soundness fix (2026-06-09):** the former second axiom
+> `canonicalBytes_injective` (unconditional injectivity of the canonical
+> encoding) was found to be **false in the model** — `seq_num : Nat` is
+> truncated to 64 bits by `encodeSeqNum`, and `encodePrevHash` carries no
+> length delimiter, so distinct records could encode identically. The axiom
+> was removed and replaced by the proven theorem
+> `canonicalBytes_injective_wf`, restricted to well-formed records
+> (`Record.WF`: `seq_num < 2^64`, 32-byte `prev_hash`), with `WF` threaded
+> through `P3_Traceability`. Both counterexamples are machine-checked and
+> kept as the negative regression theorems `old_axiom_was_false` and
+> `old_axiom_was_false_seqnum`. See
+> [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) changelog.
 
 ## Verification status (May 2026, post-toolchain-bump receipt)
 
@@ -79,11 +92,17 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 'OmegaV14.governed_iff_all_conjuncts' does not depend on any axioms
 'OmegaV14.governed_fails_without_p2_dag' does not depend on any axioms
 
-'OmegaP3Semantic.linked_from_append_single' depends on axioms: [propext]
-'OmegaP3Semantic.chain_integrity_extends'  depends on axioms: [propext]
-'OmegaP3Semantic.chain_monotonicity'       depends on axioms: [propext]
-'OmegaP3Semantic.tamper_detection'         depends on axioms: [OmegaP3Semantic.compute_hash_collision_resistant]
-'OmegaP3Semantic.chain_no_gaps' does not depend on any axioms
+'OmegaP3Semantic.canonicalBytes_injective_wf' depends on axioms: [propext, Classical.choice, Quot.sound]
+'OmegaP3Semantic.decode_encode' depends on axioms: [propext, Classical.choice, Quot.sound]
+'OmegaP3Semantic.decodeSeqNum_encode' depends on axioms: [propext, Classical.choice, Quot.sound]
+'OmegaP3Semantic.tamper_detection' depends on axioms: [propext,
+ Classical.choice,
+ OmegaP3Semantic.compute_hash_collision_resistant,
+ Quot.sound]
+'OmegaP3Semantic.chain_integrity_extends' depends on axioms: [propext]
+'OmegaP3Semantic.old_axiom_was_false' depends on axioms: [propext, Quot.sound]
+'OmegaP3Semantic.old_axiom_was_false_seqnum' depends on axioms: [propext, Quot.sound]
+'OmegaP3Semantic.chain_no_gaps' depends on axioms: [propext]
 
 'OmegaP1Governance.governance_requires_contract' does not depend on any axioms
 'OmegaP1Governance.governance_requires_agent'    does not depend on any axioms
@@ -92,7 +111,7 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 'retries_with_success_requires_monitoring'   depends on axioms: [sorryAx]
 ```
 
-`propext` is a Lean built-in, not a user-declared axiom; `sorryAx` is Lean's marker for the single declared `sorry`; `compute_hash_collision_resistant` is the sole named user axiom in the package and only enters `tamper_detection`.
+`propext`, `Classical.choice`, and `Quot.sound` are Lean built-ins (the latter two enter via core `List`/`Array`/`ByteArray` lemmas used by the decoder proofs), not user-declared axioms; `sorryAx` is Lean's marker for the single declared `sorry` in `FailureProtocol`; `compute_hash_collision_resistant` is the **sole** named user axiom in the package and only enters `tamper_detection` (and its computational stub). `canonicalBytes_injective_wf` and `decode_encode` — the proven replacements for the removed `canonicalBytes_injective` axiom — depend on no user axioms, and the negative regression theorems `old_axiom_was_false` / `old_axiom_was_false_seqnum` are kernel-checked refutations of the old axiom's statement.
 
 ## Reproduce locally
 
@@ -114,7 +133,12 @@ import FailureProtocol
 
 #print axioms p1_necessary
 #print axioms OmegaV14.p2_dag_necessary
+#print axioms OmegaP3Semantic.canonicalBytes_injective_wf
+#print axioms OmegaP3Semantic.decode_encode
 #print axioms OmegaP3Semantic.tamper_detection
+#print axioms OmegaP3Semantic.chain_integrity_extends
+#print axioms OmegaP3Semantic.old_axiom_was_false
+#print axioms OmegaP3Semantic.chain_no_gaps
 #print axioms OmegaP1Governance.governance_requires_contract
 #print axioms retries_with_success_requires_monitoring
 EOF

@@ -65,7 +65,9 @@ Two structural changes:
 - `compute_hash : ByteArray → ByteArray` becomes `H.hash : Key λ → ByteArray → Hash λ`.
 
 What survives intact:
-- `canonicalBytes_injective` (it's about the encoding, not the hash).
+- `canonicalBytes_injective_wf` (proven theorem since 2026-06-09; it's about
+  the encoding, not the hash — its predecessor axiom `canonicalBytes_injective`
+  was found false and removed, see `docs/ASSURANCE_BOUNDARY.md` changelog).
 - `chain_integrity_extends` and `chain_no_gaps` (deterministic).
 
 What changes shape:
