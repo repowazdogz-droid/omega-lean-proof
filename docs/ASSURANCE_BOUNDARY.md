@@ -12,7 +12,7 @@ Lean artifacts are meaningful only **inside an explicit boundary**. `omega-lean-
 | **Lean conjunction structure** | `Governed → P_i` projections, `¬P_i → ¬Governed` absence lemmas, packaging theorems |
 | **SymPy failure-mode necessity (9/15)** | [`documents/necessity_all15.py`](../documents/necessity_all15.py) SHA `0ab3a965…`: domain-grounded \(F_i\), `g2` name guard, hard shared-flipped-literal guard |
 | **Reproducible build receipts** | `lake build` @ Lean v4.27.0, `#print axioms`, SafeVerify replay (2026-05-19 pass) |
-| **Explicit axiom posture** | Exactly ONE named user axiom: `compute_hash_collision_resistant` in `OmegaP3Semantic` (plus the `opaque compute_hash` declaration it constrains). The former second axiom `canonicalBytes_injective` was removed 2026-06-09 — see changelog below. |
+| **Explicit axiom posture** | **ZERO** named user axioms in shipped roots (PIN2, 2026-06-09). Trust base: Lean kernel + built-ins, opaque `compute_hash` (unverified SHA-256 binding), Lean↔JCS encoding gap (Phase 2). Former axioms `canonicalBytes_injective` and `compute_hash_collision_resistant` removed — see changelog. |
 
 ---
 
@@ -95,10 +95,10 @@ negative regression theorems (`old_axiom_was_false`,
 `old_axiom_was_false_seqnum` in `OmegaP3Semantic.lean`), permanently
 documenting that the shipped axiom was refutable.
 
-Resulting axiom inventory for `OmegaP3Semantic`: exactly **one** user
-axiom, `compute_hash_collision_resistant` (idealised hash injectivity —
-satisfiable because `compute_hash` is opaque; VCVio game-based reduction is
-the planned replacement, see `../VCVIO_MIGRATION.md`). Earlier versions of
-this document under-counted the user axioms by omitting
-`canonicalBytes_injective` from the posture row; that omission is corrected
-by the axiom's removal.
+Resulting axiom inventory for `OmegaP3Semantic`: **zero** user-declared
+axioms. Tamper-evidence is constructive via `tamper_implies_collision`
+(any payload tamper passing verification exhibits an explicit collision
+pair). The convenience corollary `tamper_detection` takes injectivity as
+an explicit hypothesis. VCVio dependency removed from `lakefile.lean`
+(see `../VCVIO_RECON.md`). Remaining modeling boundaries: opaque
+`compute_hash` and the Lean↔JCS encoding gap (Phase 2).
