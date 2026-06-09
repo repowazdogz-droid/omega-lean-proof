@@ -158,3 +158,22 @@ axiom sha256_collision_resistant :
 | SHA-256 FFI | 0-byte stub |
 | Compiled reduction example | None |
 | Omega `tamper_detection` → VCVio | Conceptually 2 rewrites; infrastructure missing |
+
+---
+
+## 5. VCVio dependency removed (2026-06-09, PIN2)
+
+**Rationale:** The constructive tamper-evidence theorem `tamper_implies_collision`
+supersedes the former `compute_hash_collision_resistant` user axiom. VCVio was
+declared in `lakefile.lean` but never imported by shipped roots; at v4.27.0 its
+security-game API (`SecExp`, `SecAdv`, collision-resistance games) is commented
+out upstream and `LibSodium/SHA2.lean` remains empty. Keeping VCVio pulled Mathlib
+(~32 s cold build) with no proof benefit.
+
+**Actions:**
+- Removed `require VCVio` from `lakefile.lean`; `lake-manifest.json` packages list is empty.
+- Deleted `probes/VCVioProbe.lean` (imported VCVio; would fail without the dependency).
+- Cold build without VCVio: ~1.4 s (was ~32 s with transitive Mathlib).
+
+A future VCVio migration remains tracked in `VCVIO_MIGRATION.md` for when upstream
+ships the security-game API and SHA-256 FFI slot.

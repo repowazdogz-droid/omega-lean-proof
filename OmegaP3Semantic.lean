@@ -309,44 +309,17 @@ theorem old_axiom_was_false_seqnum :
 
 -- Hash primitive intended to be SHA-256. Declared `opaque` so the kernel
 -- treats it as a function whose implementation exists but is not unfolded
--- during proof checking. This is a stronger claim than `axiom` (which only
--- asserts existence) — it commits to "there is a real function here that
--- will be supplied at runtime" without forcing the supply now. The
--- intended runtime backing is libsodium's `crypto_hash_sha256` via FFI,
--- to be wired up in a separate step that needs the libsodium toolchain.
+-- during proof checking. This is a modeling boundary: no verified SHA-256
+-- implementation is wired in-tree (runtime uses libsodium via omega-contracts;
+-- the Lean↔JCS encoding gap is a separate Phase-2 refinement).
 --
--- TODO(VCVio): replace with `VCVio.CryptoFoundations.HardnessAssumptions.CollisionResistance`
--- oracle-model proof once `LibSodium/SHA2.lean` is populated (empty at v4.27.0).
--- Probe import: `lean-proof/probes/VCVioProbe.lean`. See `docs/lean-axioms.md` and
--- `lean-proof/VCVIO_MIGRATION.md`.
+-- CRYPTOGRAPHY NOTE (2026-06-09): tamper-evidence is stated constructively
+-- via `tamper_implies_collision` — any payload tamper passing verification
+-- exhibits an explicit collision pair. The assumption-style `tamper_detection`
+-- corollary takes injectivity as an explicit hypothesis. A VCVio computational
+-- reduction remains future work once upstream ships the security-game API;
+-- see VCVIO_RECON.md (VCVio dependency removed from lakefile 2026-06-09).
 opaque compute_hash : ByteArray → ByteArray
-
--- Collision resistance: SHA-256 is not truly injective but is computationally
--- collision-resistant, meaning no efficient algorithm can find a b ≠ a with the
--- same hash. This is the standard cryptographic assumption, not provable in
--- pure Lean. Without this, tamper_detection cannot be proved — a malicious
--- payload would only have to produce a hash collision rather than the same
--- payload bytes.
---
--- MODELING NOTE — trust boundary (NOT changed in the 2026-06-09 soundness
--- pass; this is the package's sole remaining user axiom):
--- The axiom below asserts true INJECTIVITY of compute_hash
--- (compute_hash a = compute_hash b → a = b), which is *strictly stronger*
--- than SHA-256's actual property of collision resistance. SHA-256 cannot be
--- injective: it maps arbitrary-length inputs to a fixed 256-bit output, so
--- collisions must exist by pigeonhole. Unlike the deleted
--- canonicalBytes_injective axiom this one is SATISFIABLE in the model —
--- compute_hash is opaque with no defining equations, so an injective
--- interpretation (e.g. the identity function) exists and the axiom cannot
--- introduce an inconsistency. It is a deliberate idealisation: any
--- soundness claim flowing through `tamper_detection` depends on the
--- absence of an exhibited SHA-256 collision in the runtime artifacts being
--- checked, and is *not* a claim about SHA-256's mathematical structure.
--- PLANNED REPLACEMENT: a VCVio game-based reduction (negligible collision
--- advantage over a security parameter) once the toolchain supports it —
--- see VCVIO_MIGRATION.md.
-axiom compute_hash_collision_resistant :
-  ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b
 
 -- The expected prev_hash for the next record appended to this chain.
 def expected_after (expected : Option ByteArray) (chain : List Record) : Option ByteArray :=
@@ -415,8 +388,8 @@ def PayloadTamper (chain tampered : List Record) : Prop :=
 -- Notes on previously flagged trust boundaries at this theorem:
 --   * seq_num manipulation: closed by folding seq_num into canonicalBytes
 --     (encodeSeqNum prefix). A record whose seq_num lies about position
---     would have to break content_hash, ruled out by
---     compute_hash_collision_resistant.
+--     would have to break content_hash; any such break passing verification
+--     on both chains exhibits a collision via `tamper_implies_collision`.
 --   * prev_hash rewrite: closed by folding prev_hash into canonicalBytes
 --     (encodePrevHash block). A record substituted into a different chain
 --     position with a different predecessor's content_hash as prev_hash
@@ -472,70 +445,73 @@ theorem chain_monotonicity (chain chain' : List Record) :
     exact Nat.le_add_right chain.length suffix.length
   · exact ⟨suffix, rfl⟩
 
--- Proof using compute_hash_collision_resistant + canonicalBytes_injective_wf.
--- Sketch: in the tampered chain the tampered record's content_hash is
--- unchanged from the original (structure update only changes payload). If
--- P3_Traceability holds on the tampered chain, both records' content_hash
--- equal compute_hash of their respective canonicalBytes. Collision
--- resistance lifts that to canonicalBytes equality; the proven injectivity
--- theorem (both records are WF — tampering the payload does not affect WF,
--- and the original is WF from the original chain's P3) then forces payload
--- equality, contradicting the tamper hypothesis.
---
--- DEPENDENCY MINIMISATION NOTE: both steps are genuinely needed. Collision
--- resistance only equates the *byte streams* (canonicalBytes); without
--- encoding injectivity, equal byte streams would not force equal payloads
--- (the two counterexample theorems above show exactly how equal bytes can
--- hide different field values outside WF). With WF available from
--- P3_Traceability, injectivity is now a theorem, so the only user axiom
--- in this proof is compute_hash_collision_resistant.
--- AXIOM DEPENDENCIES: [propext, compute_hash_collision_resistant].
-theorem tamper_detection (chain tampered : List Record) :
+-- Constructive tamper-evidence: any payload tamper that passes verification
+-- on BOTH chains exhibits an explicit compute_hash collision. This is the
+-- canonical statement — no injectivity or collision-resistance axiom.
+-- AXIOM DEPENDENCIES: [propext, Classical.choice, Quot.sound] (built-ins only).
+theorem tamper_implies_collision (chain tampered : List Record) :
+    P3_Traceability chain →
+    PayloadTamper chain tampered →
+    P3_Traceability tampered →
+    ∃ a b : ByteArray, a ≠ b ∧ compute_hash a = compute_hash b := by
+  intro hp ht htamp
+  obtain ⟨pre, suffix, original, changedPayload, hchain, htampered, hpayload⟩ := ht
+  let tamperedRec : Record := { original with payload := changedPayload }
+  have h_ch_eq : tamperedRec.content_hash = original.content_hash := rfl
+  have h_in_tamp : tamperedRec ∈ tampered := by
+    rw [htampered]
+    exact List.mem_append_right pre (List.Mem.head suffix)
+  have h_in_orig : original ∈ chain := by
+    rw [hchain]
+    exact List.mem_append_right pre (List.Mem.head suffix)
+  have h_orig_wf : original.WF := hp.1 original h_in_orig
+  have h_tamp_wf : tamperedRec.WF := htamp.1 tamperedRec h_in_tamp
+  have h_tamp_hash :
+      tamperedRec.content_hash = compute_hash tamperedRec.canonicalBytes :=
+    htamp.2.1 tamperedRec h_in_tamp
+  have h_orig_hash :
+      original.content_hash = compute_hash original.canonicalBytes :=
+    hp.2.1 original h_in_orig
+  have h_hash_eq :
+      compute_hash tamperedRec.canonicalBytes = compute_hash original.canonicalBytes := by
+    rw [← h_tamp_hash, h_ch_eq, h_orig_hash]
+  refine ⟨original.canonicalBytes, tamperedRec.canonicalBytes, ?_, h_hash_eq.symm⟩
+  intro hab_eq
+  have h_decode_orig := decode_encode original h_orig_wf
+  have h_decode_tamp := decode_encode tamperedRec h_tamp_wf
+  rw [← hab_eq] at h_decode_tamp
+  have htriple : (original.seq_num, original.prev_hash, original.payload) =
+      (tamperedRec.seq_num, tamperedRec.prev_hash, tamperedRec.payload) :=
+    Option.some.inj (h_decode_orig.symm.trans h_decode_tamp)
+  have h_payload_eq : original.payload = tamperedRec.payload :=
+    congrArg (fun p => p.snd.snd) htriple
+  have htamp_payload : tamperedRec.payload = changedPayload := rfl
+  exact hpayload (htamp_payload ▸ h_payload_eq.symm)
+
+/-- Convenience corollary: if `compute_hash` is assumed injective, payload
+    tamper is impossible. The hypothesis models hash injectivity, which is
+    strictly stronger than collision resistance and false for any real
+    compressing function (SHA-256 cannot be injective by pigeonhole).
+    The canonical constructive statement is `tamper_implies_collision`. -/
+theorem tamper_detection
+    (hash_cr : ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b)
+    (chain tampered : List Record) :
     P3_Traceability chain →
     PayloadTamper chain tampered →
     ¬ P3_Traceability tampered := by
   intro hp ht htamp
-  obtain ⟨pre, suffix, original, changedPayload, hchain, htampered, hpayload⟩ := ht
-  -- The tampered record produced by the structure update.
-  let tamperedRec : Record := { original with payload := changedPayload }
-  -- Structure update preserves content_hash; only payload changes.
-  have h_ch_eq : tamperedRec.content_hash = original.content_hash := rfl
-  -- Membership of tamperedRec in the tampered chain.
-  -- On Lean 4.18 simp leaves a residual disjunct from the structure update,
-  -- so discharge explicitly via append_right + cons_self.
-  have h_in_tamp : tamperedRec ∈ tampered := by
-    rw [htampered]
-    exact List.mem_append_right pre (List.Mem.head suffix)
-  -- Membership of original in the chain.
-  have h_in_orig : original ∈ chain := by
-    rw [hchain]
-    exact List.mem_append_right pre (List.Mem.head suffix)
-  -- Well-formedness of the original record, from the original chain.
-  have h_orig_wf : original.WF := hp.1 original h_in_orig
-  -- Well-formedness of the tampered record: a payload change touches
-  -- neither seq_num nor prev_hash, so WF transfers from the original.
-  have h_tamp_wf : tamperedRec.WF := ⟨h_orig_wf.1, h_orig_wf.2⟩
-  -- Hash claim from P3_Traceability on the tampered chain.
-  have h_tamp_hash :
-      tamperedRec.content_hash = compute_hash tamperedRec.canonicalBytes :=
-    htamp.2.1 tamperedRec h_in_tamp
-  -- Hash claim from P3_Traceability on the original chain.
-  have h_orig_hash :
-      original.content_hash = compute_hash original.canonicalBytes :=
-    hp.2.1 original h_in_orig
-  -- Chain the equalities at the canonicalBytes level.
-  have h_hash_eq :
-      compute_hash tamperedRec.canonicalBytes = compute_hash original.canonicalBytes := by
-    rw [← h_tamp_hash, h_ch_eq, h_orig_hash]
-  -- Collision resistance yields canonicalBytes equality.
-  have h_cb_eq : tamperedRec.canonicalBytes = original.canonicalBytes :=
-    compute_hash_collision_resistant _ _ h_hash_eq
-  -- Proven injectivity on WF records (formerly an unsound axiom).
-  have h_payload_eq : tamperedRec.payload = original.payload :=
-    (canonicalBytes_injective_wf tamperedRec original h_tamp_wf h_orig_wf h_cb_eq).2.2
-  -- tamperedRec.payload reduces to changedPayload via the structure update,
-  -- so this contradicts the PayloadTamper hypothesis.
-  exact hpayload h_payload_eq
+  obtain ⟨a, b, hab_ne, hab_hash⟩ := tamper_implies_collision chain tampered hp ht htamp
+  exact hab_ne (hash_cr a b hab_hash)
+
+/-- Delegates to `tamper_detection` with an explicit injectivity hypothesis.
+    Retained for call-site compatibility; pass `hash_cr` at each use site. -/
+theorem tamper_detection_computational_stub
+    (hash_cr : ∀ a b : ByteArray, compute_hash a = compute_hash b → a = b) :
+    ∀ (chain tampered : List Record),
+    P3_Traceability chain →
+    PayloadTamper chain tampered →
+    ¬ P3_Traceability tampered :=
+  tamper_detection hash_cr
 
 -- Without seq_num contiguity, the chain [r0(seq=0), r1(seq=1), r3(seq=3)]
 -- could satisfy the prev_hash linkage while skipping seq 2. This theorem
@@ -556,22 +532,3 @@ theorem chain_all_wf (chain : List Record) :
   intro hp
   exact hp.1
 
--- MIGRATION TARGET: replace with VCVio computational security proof
--- when toolchain is bumped to v4.29.0. See VCVIO_MIGRATION.md.
--- Shape: tamper_detection holds against any PPT adversary with
--- non-negligible SHA-256 collision advantage.
---
--- Current body delegates to the deterministic tamper_detection so the
--- API name is reserved and call sites compile against the eventual
--- signature. The signature here is the deterministic form; on
--- migration, this stub is replaced by the probabilistic form
--- (negligible advantage over a security parameter) and the proof body
--- becomes the reduction to sha256_collision_resistant.
-theorem tamper_detection_computational_stub :
-    ∀ (chain tampered : List Record),
-    P3_Traceability chain →
-    PayloadTamper chain tampered →
-    ¬ P3_Traceability tampered :=
-  tamper_detection
-
-end OmegaP3Semantic
