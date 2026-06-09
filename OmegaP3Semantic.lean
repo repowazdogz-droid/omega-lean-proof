@@ -259,7 +259,8 @@ restricts to WF records. -/
 /-- Counterexample (b) — framing ambiguity: with no length delimiter on
     the prev_hash block, bytes can migrate between prev_hash and payload.
     (prev = [0xAA], payload = [0xBB]) and (prev = [0xAA, 0xBB],
-    payload = []) produce the same canonical bytes. -/
+    payload = []) produce the same canonical bytes.
+    Witness records are NOT WF: r1.prev_hash = some #[0xAA] has size 1 ≠ 32. -/
 theorem old_axiom_was_false :
     ∃ r1 r2 : Record, r1.canonicalBytes = r2.canonicalBytes ∧
       r1.payload ≠ r2.payload := by
@@ -283,7 +284,8 @@ theorem old_axiom_was_false :
 
 /-- Counterexample (a) — 64-bit truncation: seq_num : Nat is unbounded
     but encodeSeqNum keeps only the low 64 bits, so seq_num = 0 and
-    seq_num = 2^64 encode identically. -/
+    seq_num = 2^64 encode identically.
+    Witness records are NOT WF: r2.seq_num = 2^64 violates seq_num < 2^64. -/
 theorem old_axiom_was_false_seqnum :
     ∃ r1 r2 : Record, r1.canonicalBytes = r2.canonicalBytes ∧
       r1.seq_num ≠ r2.seq_num := by
