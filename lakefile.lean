@@ -17,3 +17,13 @@ package omegaProof
 lean_lib OmegaProof where
   srcDir := "."
   roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol, `OmegaHashChain, `OmegaGovernance]
+
+lean_lib OmegaJCS where
+  srcDir := "."
+  roots := #[`OmegaJCS.Types, `OmegaJCS.Encode, `OmegaJCS.Decode, `OmegaJCS.Roundtrip]
+
+lean_exe jcsDump where
+  srcDir := "scratch"
+  root := `JcsDump
+  supportInterpreter := true
+

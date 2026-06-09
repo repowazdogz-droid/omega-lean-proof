@@ -1,0 +1,154 @@
+{
+  "corpusPassCount": 16,
+  "corpusFailCount": 0,
+  "corpusTotal": 16,
+  "refundContentHash": "e747c3fdcb2966c6f0fafa4ab3b51274e53c70f1bf44c51c662ff26749996c09",
+  "expectedRefundHash": "e747c3fdcb2966c6f0fafa4ab3b51274e53c70f1bf44c51c662ff26749996c09",
+  "refundHashMatch": true,
+  "results": [
+    {
+      "case": "deep-array-depth8.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "61c273c6684f7d2b840576aeb305c594421e20edef2d5e57e297c0167a867a91",
+      "leanSha256": "61c273c6684f7d2b840576aeb305c594421e20edef2d5e57e297c0167a867a91",
+      "npmLen": 17,
+      "leanLen": 17
+    },
+    {
+      "case": "empty-arr.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "leanSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "npmLen": 2,
+      "leanLen": 2
+    },
+    {
+      "case": "empty-obj.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "leanSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "npmLen": 2,
+      "leanLen": 2
+    },
+    {
+      "case": "escape-and-unicode.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "e07a189794c2e29633544eccb5c2a7e25927c34dfbd1e02736ccd9328b18fa77",
+      "leanSha256": "e07a189794c2e29633544eccb5c2a7e25927c34dfbd1e02736ccd9328b18fa77",
+      "npmLen": 108,
+      "leanLen": 108
+    },
+    {
+      "case": "french-key-sort.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "d99d0ebdcb0033cb858cfa830ae46bc0fb3309413b271f1da828c89901a27ed5",
+      "leanSha256": "d99d0ebdcb0033cb858cfa830ae46bc0fb3309413b271f1da828c89901a27ed5",
+      "npmLen": 127,
+      "leanLen": 127
+    },
+    {
+      "case": "int-extremes.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "9469cd310334e83149791bb63c074f091a11db56e149aaf2cc6005d3282ffaab",
+      "leanSha256": "9469cd310334e83149791bb63c074f091a11db56e149aaf2cc6005d3282ffaab",
+      "npmLen": 67,
+      "leanLen": 67
+    },
+    {
+      "case": "literals.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "f4e3f047101e0191aeb3ebf17ee457cbf687f209bd983dade6ac183f86d93797",
+      "leanSha256": "f4e3f047101e0191aeb3ebf17ee457cbf687f209bd983dade6ac183f86d93797",
+      "npmLen": 30,
+      "leanLen": 30
+    },
+    {
+      "case": "mixed-key-order.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "237a1c65db6f341534f0e709844480a64aa9207e8ed2e5748b2a910ab22e337a",
+      "leanSha256": "237a1c65db6f341534f0e709844480a64aa9207e8ed2e5748b2a910ab22e337a",
+      "npmLen": 30,
+      "leanLen": 30
+    },
+    {
+      "case": "nested-array.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "e1376dc904b3c07777507e221322a0dc94bdcddca374cbab737f80f98cca4398",
+      "leanSha256": "e1376dc904b3c07777507e221322a0dc94bdcddca374cbab737f80f98cca4398",
+      "npmLen": 24,
+      "leanLen": 24
+    },
+    {
+      "case": "nesting-depth8.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "6dedf37dd4c3cb9fe1388998ff4a5b17ea3db6c247071ecbcc860f9d8adf3cdd",
+      "leanSha256": "6dedf37dd4c3cb9fe1388998ff4a5b17ea3db6c247071ecbcc860f9d8adf3cdd",
+      "npmLen": 49,
+      "leanLen": 49
+    },
+    {
+      "case": "newline-vs-one-key.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "685a337f4c548ce7d0400c3ad99416ce6a975a44f7725137f4d594b28bd74271",
+      "leanSha256": "685a337f4c548ce7d0400c3ad99416ce6a975a44f7725137f4d594b28bd74271",
+      "npmLen": 26,
+      "leanLen": 26
+    },
+    {
+      "case": "refund-escalation-stripped.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "e747c3fdcb2966c6f0fafa4ab3b51274e53c70f1bf44c51c662ff26749996c09",
+      "leanSha256": "e747c3fdcb2966c6f0fafa4ab3b51274e53c70f1bf44c51c662ff26749996c09",
+      "npmLen": 1523,
+      "leanLen": 1523
+    },
+    {
+      "case": "scalar-mix.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "4e881488a16bc2601f120c8779d37e0d28305e8e9b099ce7a2e3e93d52b944fd",
+      "leanSha256": "4e881488a16bc2601f120c8779d37e0d28305e8e9b099ce7a2e3e93d52b944fd",
+      "npmLen": 54,
+      "leanLen": 54
+    },
+    {
+      "case": "structures-subset.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "27f0defe7fd69ba6b798a393f6799426b3e81f020921d8016ab6158ee1e6c804",
+      "leanSha256": "27f0defe7fd69ba6b798a393f6799426b3e81f020921d8016ab6158ee1e6c804",
+      "npmLen": 72,
+      "leanLen": 72
+    },
+    {
+      "case": "unicode-string.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "0d99aad92a125196ff887876643fd3206786a84ddce2cee52ba4ad256d2381d3",
+      "leanSha256": "0d99aad92a125196ff887876643fd3206786a84ddce2cee52ba4ad256d2381d3",
+      "npmLen": 29,
+      "leanLen": 29
+    },
+    {
+      "case": "utf16-key-sort-bmp-vs-supplementary.json",
+      "match": true,
+      "leanError": null,
+      "npmSha256": "4aab640819bf8631af40d16c069f079be71f821c4339497f871c3a863dca78b7",
+      "leanSha256": "4aab640819bf8631af40d16c069f079be71f821c4339497f871c3a863dca78b7",
+      "npmLen": 30,
+      "leanLen": 30
+    }
+  ]
+}

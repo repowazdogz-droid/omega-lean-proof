@@ -1,0 +1,1142 @@
+{
+  "package": {
+    "name": "canonicalize",
+    "requested": "^3.0.0",
+    "resolved": "3.0.0",
+    "integrity": "sha512-yYLfHyDMIXRyRqsKBRLX023riFLpXY2YOfdtqKXZRZy9qsfOJ9U+4F9YZL7MEzL5+ziN2x2nlBvY/Voi3EBljA==",
+    "lockfile": "omega-contracts/package-lock.json"
+  },
+  "officialVectors": [
+    {
+      "name": "arrays",
+      "pass": true,
+      "expected": "[56,{\"1\":[],\"10\":null,\"d\":true}]",
+      "got": "[56,{\"1\":[],\"10\":null,\"d\":true}]",
+      "expectedLen": 32,
+      "gotLen": 32
+    },
+    {
+      "name": "french",
+      "pass": true,
+      "expected": "{\"peach\":\"This sorting order\",\"péché\":\"is wrong according to French\",\"pêche\":\"but canonicalization MUST\",\"sin\":\"ignore locale\"}",
+      "got": "{\"peach\":\"This sorting order\",\"péché\":\"is wrong according to French\",\"pêche\":\"but canonicalization MUST\",\"sin\":\"ignore locale\"}",
+      "expectedLen": 127,
+      "gotLen": 127
+    },
+    {
+      "name": "structures",
+      "pass": true,
+      "expected": "{\"\":\"empty\",\"1\":{\"\\n\":56,\"f\":{\"F\":5,\"f\":\"hi\"}},\"10\":{},\"111\":[{\"E\":\"no\",\"e\":\"yes\"}],\"A\":{},\"a\":{}}",
+      "got": "{\"\":\"empty\",\"1\":{\"\\n\":56,\"f\":{\"F\":5,\"f\":\"hi\"}},\"10\":{},\"111\":[{\"E\":\"no\",\"e\":\"yes\"}],\"A\":{},\"a\":{}}",
+      "expectedLen": 98,
+      "gotLen": 98
+    },
+    {
+      "name": "unicode",
+      "pass": true,
+      "expected": "{\"Unnormalized Unicode\":\"Å\"}",
+      "got": "{\"Unnormalized Unicode\":\"Å\"}",
+      "expectedLen": 29,
+      "gotLen": 29
+    },
+    {
+      "name": "values",
+      "pass": true,
+      "expected": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}",
+      "got": "{\"literals\":[null,true,false],\"numbers\":[333333333.3333333,1e+30,4.5,0.002,1e-27],\"string\":\"€$\\u000f\\nA'B\\\"\\\\\\\\\\\"/\"}",
+      "expectedLen": 116,
+      "gotLen": 116
+    },
+    {
+      "name": "weird",
+      "pass": true,
+      "expected": "{\"\\n\":\"Newline\",\"\\r\":\"Carriage Return\",\"1\":\"One\",\"</script>\":\"Browser Challenge\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😂\":\"Smiley\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "got": "{\"\\n\":\"Newline\",\"\\r\":\"Carriage Return\",\"1\":\"One\",\"</script>\":\"Browser Challenge\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😂\":\"Smiley\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+      "expectedLen": 206,
+      "gotLen": 206
+    }
+  ],
+  "officialPassCount": 6,
+  "officialFailCount": 0,
+  "utf16KeySortProbe": {
+    "name": "utf16-key-sort-supplementary-vs-bmp",
+    "got": "{\"Ā\":\"bmp\",\"𝐀\":\"math-bold-A\"}",
+    "utf16Order": "{\"Ā\":\"bmp\",\"𝐀\":\"math-bold-A\"}",
+    "codePointOrder": "{\"Ā\":\"bmp\",\"𝐀\":\"math-bold-A\"}",
+    "jsDefaultSort": [
+      "Ā",
+      "𝐀"
+    ],
+    "keysEqual": true,
+    "note": "RFC 8785 requires UTF-16 code-unit order; JS .sort() uses UTF-16 code units"
+  },
+  "utf16FrenchKeysProbe": {
+    "name": "french-key-sort-locale-vs-default",
+    "defaultSort": [
+      "peach",
+      "péché",
+      "pêche",
+      "sin"
+    ],
+    "localeFrSort": [
+      "peach",
+      "péché",
+      "pêche",
+      "sin"
+    ],
+    "differ": false,
+    "canonical": "{\"peach\":\"This sorting order\",\"péché\":\"is wrong according to French\",\"pêche\":\"but canonicalization MUST\",\"sin\":\"ignore locale\"}"
+  },
+  "numberProbes": [
+    {
+      "label": "1e21",
+      "input": 1e+21,
+      "jsonStringify": "1e+21",
+      "canonicalize": "1e+21",
+      "match": true
+    },
+    {
+      "label": "1e-7",
+      "input": 1e-7,
+      "jsonStringify": "1e-7",
+      "canonicalize": "1e-7",
+      "match": true
+    },
+    {
+      "label": "0.1+0.2",
+      "input": 0.30000000000000004,
+      "jsonStringify": "0.30000000000000004",
+      "canonicalize": "0.30000000000000004",
+      "match": true
+    },
+    {
+      "label": "-0",
+      "input": 0,
+      "jsonStringify": "0",
+      "canonicalize": "0",
+      "match": true
+    },
+    {
+      "label": "9007199254740993",
+      "input": 9007199254740992,
+      "jsonStringify": "9007199254740992",
+      "canonicalize": "9007199254740992",
+      "match": true
+    },
+    {
+      "label": "9007199254740992",
+      "input": 9007199254740992,
+      "jsonStringify": "9007199254740992",
+      "canonicalize": "9007199254740992",
+      "match": true
+    },
+    {
+      "label": "333333333.33333329",
+      "input": 333333333.3333333,
+      "jsonStringify": "333333333.3333333",
+      "canonicalize": "333333333.3333333",
+      "match": true
+    },
+    {
+      "label": "1E30",
+      "input": 1e+30,
+      "jsonStringify": "1e+30",
+      "canonicalize": "1e+30",
+      "match": true
+    },
+    {
+      "label": "4.50",
+      "input": 4.5,
+      "jsonStringify": "4.5",
+      "canonicalize": "4.5",
+      "match": true
+    },
+    {
+      "label": "2e-3",
+      "input": 0.002,
+      "jsonStringify": "0.002",
+      "canonicalize": "0.002",
+      "match": true
+    },
+    {
+      "label": "1e-27",
+      "input": 1e-27,
+      "jsonStringify": "1e-27",
+      "canonicalize": "1e-27",
+      "match": true
+    },
+    {
+      "label": "JSON.parse 9007199254740993",
+      "input": 9007199254740992,
+      "jsonStringify": "9007199254740992",
+      "canonicalize": "9007199254740992",
+      "match": true
+    }
+  ],
+  "stringEscapeProbes": [
+    {
+      "label": "U+001F",
+      "pass": true,
+      "output": "\"\\u001f\""
+    },
+    {
+      "label": "U+000A newline",
+      "pass": true,
+      "output": "\"\\n\""
+    },
+    {
+      "label": "U+000D cr",
+      "pass": true,
+      "output": "\"\\r\""
+    },
+    {
+      "label": "quote",
+      "pass": true,
+      "output": "\"\\\"\""
+    },
+    {
+      "label": "backslash",
+      "pass": true,
+      "output": "\"\\\\\""
+    },
+    {
+      "label": "slash",
+      "pass": true,
+      "output": "\"/\""
+    },
+    {
+      "label": "euro U+20AC",
+      "pass": true,
+      "output": "\"€\""
+    },
+    {
+      "label": "high surrogate alone",
+      "pass": true,
+      "output": "\"\\ud800\""
+    },
+    {
+      "label": "low surrogate alone",
+      "pass": true,
+      "output": "\"\\udc00\""
+    },
+    {
+      "label": "lone surrogate in object key",
+      "pass": true,
+      "output": "{\"\\ud800\":\"lonely\"}"
+    }
+  ],
+  "valueDomainAudit": {
+    "filesScanned": [
+      "fixtures/assumption-registry/canonical.expected.json",
+      "fixtures/assumption-registry/native.sample.json",
+      "fixtures/clearpath/canonical.expected.json",
+      "fixtures/clearpath/native.sample.json",
+      "fixtures/cognitive-ledger/canonical.expected.json",
+      "fixtures/cognitive-ledger/native.sample.json",
+      "fixtures/composition/expected_record.json",
+      "fixtures/composition/inputs.json",
+      "fixtures/consent-ledger/canonical.expected.json",
+      "fixtures/consent-ledger/native.sample.json",
+      "fixtures/dispute-protocol/canonical.expected.json",
+      "fixtures/dispute-protocol/native.sample.json",
+      "fixtures/ethics-gate/canonical.expected.json",
+      "fixtures/ethics-gate/native.sample.json",
+      "fixtures/harm-trace/canonical.expected.json",
+      "fixtures/harm-trace/native.sample.json",
+      "fixtures/specgap/canonical.expected.json",
+      "fixtures/specgap/fingerprint_vector.json",
+      "fixtures/specgap/native.sample.json",
+      "fixtures/trust-score/canonical.expected.json",
+      "fixtures/trust-score/native.sample.json",
+      "omega-demo-record-adapter/test/adapter.test.js (JS — not JSON-scanned)"
+    ],
+    "numbers": {
+      "integers": [
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"total_assumptions\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"load_bearing_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"load_bearing_validated\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"expired_assumptions\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"cascade_risks\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"total_traces\"",
+          "value": 4
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"verification_failures\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"alternatives_considered_avg\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"faithfulness_distribution\".\"verified_faithful\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"faithfulness_distribution\".\"narrative\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"faithfulness_distribution\".\"unverified\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"faithfulness_distribution\".\"disputed\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"bias_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"recurring_biases\"[0].\"frequency\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"recurring_biases\"[1].\"frequency\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"total_traces\"",
+          "value": 4
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"verification_failures\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"alternatives_considered_avg\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"faithfulness_distribution\".\"verified_faithful\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"faithfulness_distribution\".\"narrative\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"faithfulness_distribution\".\"unverified\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"faithfulness_distribution\".\"disputed\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"bias_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"recurring_biases\"[0].\"frequency\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"recurring_biases\"[1].\"frequency\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"total_actions\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"violations\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"violations_by_severity\".\"critical\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"violations_by_severity\".\"major\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"violations_by_severity\".\"minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"scope_creep_pattern_count\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"authorisations_active\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"authorisations_expired\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"consent\".\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"total_incidents\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"severity_distribution\".\"minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"severity_distribution\".\"moderate\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"severity_distribution\".\"negligible\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"pending_remediations\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"consequence_chain_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"total_assumptions\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"load_bearing_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"load_bearing_validated\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"expired_assumptions\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"cascade_risks\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"total_disputes\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"open_disputes\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"resolved_in_favor_of_actor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"resolved_against_actor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"precedents_set\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"divergence_summary\".\"different_evidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"divergence_summary\".\"different_assumptions\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"divergence_summary\".\"different_interpretation\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"dispute\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"total_reviews\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"outcome_distribution\".\"pass\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"outcome_distribution\".\"flag_minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"outcome_distribution\".\"flag_major\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"outcome_distribution\".\"flag_critical\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"outcome_distribution\".\"requires_human_review\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"unacknowledged_flags\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"vulnerable_population_concerns\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"weaponisation_concerns\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"ethics\".\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"transparency\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"calibration\".\"confidence\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"calibration\".\"evidence_count\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consistency\".\"confidence\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consistency\".\"evidence_count\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consent_compliance\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"harm_record\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"assumption_discipline\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"dispute_record\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"ethics_record\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"total_actions\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"violations\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"violations_by_severity\".\"critical\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"violations_by_severity\".\"major\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"violations_by_severity\".\"minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"scope_creep_pattern_count\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"authorisations_active\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"authorisations_expired\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/consent-ledger/canonical.expected.json.\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"total_disputes\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"open_disputes\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"resolved_in_favor_of_actor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"resolved_against_actor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"precedents_set\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"divergence_summary\".\"different_evidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"divergence_summary\".\"different_assumptions\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"divergence_summary\".\"different_interpretation\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/dispute-protocol/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"total_reviews\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"outcome_distribution\".\"pass\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"outcome_distribution\".\"flag_minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"outcome_distribution\".\"flag_major\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"outcome_distribution\".\"flag_critical\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"outcome_distribution\".\"requires_human_review\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"unacknowledged_flags\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"vulnerable_population_concerns\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"weaponisation_concerns\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/ethics-gate/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"total_incidents\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"severity_distribution\".\"minor\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"severity_distribution\".\"moderate\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"severity_distribution\".\"negligible\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"pending_remediations\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"consequence_chain_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"specgap\".\"semantic_divergence_count\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"specgap\".\"high_severity_divergence_count\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"specgap\".\"failed_implication_checks\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"specgap\".\"implication_checks_total\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"specgap\".\"inconsistent_layers\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/specgap/canonical.expected.json.\"provenance\"[1].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"counts\".\"semantic_divergences\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"counts\".\"high_severity_divergences\"",
+          "value": 3
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"counts\".\"failed_implication_checks\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"counts\".\"implication_checks_total\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"counts\".\"inconsistent_layers\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"extracted_constraints\".\"stakeholder_intent\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"extracted_constraints\".\"formalized_policy\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/specgap/native.sample.json[0].\"envelope\".\"detail\".\"extracted_constraints\".\"implementation_claim\"[0].\"confidence\"",
+          "value": 1
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"transparency\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"calibration\".\"confidence\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"calibration\".\"evidence_count\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consistency\".\"confidence\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consistency\".\"evidence_count\"",
+          "value": 0
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consent_compliance\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"harm_record\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"assumption_discipline\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"dispute_record\".\"evidence_count\"",
+          "value": 2
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"ethics_record\".\"evidence_count\"",
+          "value": 2
+        }
+      ],
+      "nonIntegers": [
+        {
+          "path": "fixtures/assumption-registry/canonical.expected.json.\"validation_ratio\"",
+          "value": 0.5
+        },
+        {
+          "path": "fixtures/clearpath/canonical.expected.json.\"assumption_ratio\"",
+          "value": 0.5
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"recurring_biases\"[0].\"confidence\"",
+          "value": 0.7
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"recurring_biases\"[1].\"confidence\"",
+          "value": 0.6
+        },
+        {
+          "path": "fixtures/cognitive-ledger/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 0.9
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"clearpath\".\"assumption_ratio\"",
+          "value": 0.5
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"recurring_biases\"[0].\"confidence\"",
+          "value": 0.7
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"recurring_biases\"[1].\"confidence\"",
+          "value": 0.6
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"cognitive\".\"provenance\"[0].\"confidence\"",
+          "value": 0.9
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"max_severity\"",
+          "value": 0.4
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"harm\".\"remediation_rate\"",
+          "value": 0.6666666667
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"assumption\".\"validation_ratio\"",
+          "value": 0.5
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"overall_score\"",
+          "value": 0.76
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"transparency\".\"raw_score\"",
+          "value": 0.88
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"transparency\".\"score\"",
+          "value": 0.88
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"transparency\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consent_compliance\".\"raw_score\"",
+          "value": 0.82
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consent_compliance\".\"score\"",
+          "value": 0.82
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"consent_compliance\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"harm_record\".\"raw_score\"",
+          "value": 0.74
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"harm_record\".\"score\"",
+          "value": 0.74
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"harm_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"assumption_discipline\".\"raw_score\"",
+          "value": 0.68
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"assumption_discipline\".\"score\"",
+          "value": 0.68
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"assumption_discipline\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"dispute_record\".\"raw_score\"",
+          "value": 0.71
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"dispute_record\".\"score\"",
+          "value": 0.71
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"dispute_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"ethics_record\".\"raw_score\"",
+          "value": 0.79
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"ethics_record\".\"score\"",
+          "value": 0.79
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"dimensions\".\"ethics_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"evidence_sources\"[0].\"weight\"",
+          "value": 0.18
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"evidence_sources\"[1].\"weight\"",
+          "value": 0.12
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"evidence_sources\"[2].\"weight\"",
+          "value": 0.1
+        },
+        {
+          "path": "fixtures/composition/expected_record.json.\"trust\".\"provenance\"[0].\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"harm-trace\"[0].\"severity_score\"",
+          "value": 0.2
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"harm-trace\"[1].\"severity_score\"",
+          "value": 0.4
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"harm-trace\"[2].\"severity_score\"",
+          "value": 0.05
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"trust-score\"[0].\"weight\"",
+          "value": 0.18
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"trust-score\"[1].\"weight\"",
+          "value": 0.12
+        },
+        {
+          "path": "fixtures/composition/inputs.json.\"inputs\".\"trust-score\"[2].\"weight\"",
+          "value": 0.1
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"max_severity\"",
+          "value": 0.4
+        },
+        {
+          "path": "fixtures/harm-trace/canonical.expected.json.\"remediation_rate\"",
+          "value": 0.6666666667
+        },
+        {
+          "path": "fixtures/harm-trace/native.sample.json[0].\"severity_score\"",
+          "value": 0.2
+        },
+        {
+          "path": "fixtures/harm-trace/native.sample.json[1].\"severity_score\"",
+          "value": 0.4
+        },
+        {
+          "path": "fixtures/harm-trace/native.sample.json[2].\"severity_score\"",
+          "value": 0.05
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"overall_score\"",
+          "value": 0.76
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"transparency\".\"raw_score\"",
+          "value": 0.88
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"transparency\".\"score\"",
+          "value": 0.88
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"transparency\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consent_compliance\".\"raw_score\"",
+          "value": 0.82
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consent_compliance\".\"score\"",
+          "value": 0.82
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"consent_compliance\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"harm_record\".\"raw_score\"",
+          "value": 0.74
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"harm_record\".\"score\"",
+          "value": 0.74
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"harm_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"assumption_discipline\".\"raw_score\"",
+          "value": 0.68
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"assumption_discipline\".\"score\"",
+          "value": 0.68
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"assumption_discipline\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"dispute_record\".\"raw_score\"",
+          "value": 0.71
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"dispute_record\".\"score\"",
+          "value": 0.71
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"dispute_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"ethics_record\".\"raw_score\"",
+          "value": 0.79
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"ethics_record\".\"score\"",
+          "value": 0.79
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"dimensions\".\"ethics_record\".\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"evidence_sources\"[0].\"weight\"",
+          "value": 0.18
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"evidence_sources\"[1].\"weight\"",
+          "value": 0.12
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"evidence_sources\"[2].\"weight\"",
+          "value": 0.1
+        },
+        {
+          "path": "fixtures/trust-score/canonical.expected.json.\"provenance\"[0].\"confidence\"",
+          "value": 0.72
+        },
+        {
+          "path": "fixtures/trust-score/native.sample.json[0].\"weight\"",
+          "value": 0.18
+        },
+        {
+          "path": "fixtures/trust-score/native.sample.json[1].\"weight\"",
+          "value": 0.12
+        },
+        {
+          "path": "fixtures/trust-score/native.sample.json[2].\"weight\"",
+          "value": 0.1
+        }
+      ],
+      "above2p53": [],
+      "belowNeg2p53": []
+    },
+    "stringsNonAscii": [],
+    "keysNonAscii": [],
+    "maxDepth": 8,
+    "hasArrays": true,
+    "hasNull": true,
+    "hasBool": true,
+    "nonIntegerCount": 72,
+    "above2p53Count": 0,
+    "nonAsciiStringCount": 0,
+    "nonAsciiKeyCount": 0
+  },
+  "compositionHash": "152eab926412e397dfdd56217dad03a924bc9c138bee2ceafa2f3200c3d2c705",
+  "expectedCompositionHash": "152eab926412e397dfdd56217dad03a924bc9c138bee2ceafa2f3200c3d2c705"
+}

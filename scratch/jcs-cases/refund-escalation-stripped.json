@@ -1,0 +1,48 @@
+{
+  "record_id": "omega-record/2026-05-14/cs-agent-refund-1187442",
+  "schema_version": "omega/1.0",
+  "contracts_version": "0.2.2",
+  "created_at": "2026-05-14T02:23:41Z",
+  "subject": {
+    "domain": "customer-service.refund-escalation",
+    "actor_id": "agent/cs-refund-bot-v3",
+    "action": "Approve full refund of £4,820 for order O-2026-04471",
+    "stakes": "moderate"
+  },
+  "authority": {
+    "approver": "Sarah Okafor",
+    "role": "Senior Customer Operations Manager",
+    "badge": "ops-2218",
+    "limit": 2500,
+    "currency": "GBP",
+    "delegation": "Tier C escalation — automated agent cannot commit refund above limit without documented approval"
+  },
+  "evidence": {
+    "order_id": "O-2026-04471",
+    "amount": 4820,
+    "currency": "GBP",
+    "summary": "Order value £4,820. Three customer photographs supplied. Channel count and output gain inconsistent with order specification. 30-day quality assurance window applies. Agent prepared the case; supervisor reviewed independently and did not rely solely on agent vision output.",
+    "agent_prepared": true,
+    "supervisor_independent_review": true
+  },
+  "expectation": {
+    "refund_amount": 4820,
+    "currency": "GBP",
+    "payment_method": "original payment method",
+    "return_collection": true,
+    "goodwill_credit": 120,
+    "settlement_days": "3-5 business days"
+  },
+  "confirmation": {
+    "method": "SSO plus hardware key",
+    "approval_token_issued": true,
+    "token_consumed_at_commit": true,
+    "agent_blocked_without_token": true
+  },
+  "outcome": {
+    "gate_result": "COMMITTED",
+    "gate_reason": "Supervisor Sarah Okafor approved £4,820 refund above £2,500 autonomous limit. Approval token consumed at commit.",
+    "acted": true
+  },
+  "previous_hash": null
+}
