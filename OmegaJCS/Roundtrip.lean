@@ -400,29 +400,8 @@ theorem encObjSep_cons (kv : String × OmegaJson) (kvs : List (String × OmegaJs
         (match kvs with | [] => [] | kv' :: kvs' => ',' :: encObjSep (kv' :: kvs')) := by
   cases kvs <;> simp [encObjSep]
 
-theorem String_intercalate_singleton (s : String) :
-    String.intercalate "," [s] = s := by
-  unfold String.intercalate
-  rfl
-
-theorem String_intercalate_cons_cons (s t : String) (ss : List String) :
-    String.intercalate "," (s :: t :: ss) = s ++ "," ++ String.intercalate "," (t :: ss) := by
-  unfold String.intercalate
-  simp [String.append_assoc]
-
-theorem encObjSep_intercalate (kvs : List (String × OmegaJson)) :
-    (String.intercalate "," (kvs.map fun ⟨k, v⟩ => jcsEscapeString k ++ ":" ++ jcsEncode v)).toList =
-      encObjSep kvs := by
-  induction kvs with
-  | nil => simp [encObjSep, String.intercalate]
-  | cons kv kvs ih =>
-    cases kvs with
-    | nil =>
-      simp [encObjSep, encObjPairChars, String_intercalate_singleton, jcsEscapeStringChars,
-        jcsEncodeChars]
-    | cons kv' kvs' =>
-      simp only [encObjSep, List.map_cons, encObjPairChars, String_intercalate_cons_cons,
-        String.toList_append, jcsEscapeStringChars, jcsEncodeChars, ih]
+-- (Removed dead `String.intercalate`-based characterisation of `encObjSep`; the
+-- live roundtrip uses the suffix form `encObjBody_eq_encObjSep` below instead.)
 
 theorem encArrSuffix_cons (v : OmegaJson) (vs : List OmegaJson) :
     encArrSuffix (v :: vs) = ',' :: jcsEncodeChars v ++ encArrSuffix vs := by
@@ -445,22 +424,28 @@ theorem encArrBody_eq_encSep (xs : List OmegaJson) :
   induction xs with
   | nil => rfl
   | cons v xs ih =>
-    rw [encArrBody_cons, encSep_cons]
+    rw [encArrBody_cons]
     cases xs with
-    | nil => simp [encArrSuffix]
+    | nil => simp [encArrSuffix, encSep]
     | cons w ws =>
-      rw [encArrSuffix_cons, encSep_cons, List.append_assoc, ih]
+      have ih' : jcsEncodeChars w ++ encArrSuffix ws = encSep (w :: ws) ++ [']'] := by
+        rw [← encArrBody_cons]; exact ih
+      rw [encArrSuffix_cons, encSep_cons]
+      simp only [List.cons_append, List.append_assoc, ih']
 
 theorem encObjBody_eq_encObjSep (kvs : List (String × OmegaJson)) :
     encObjBody kvs = encObjSep kvs ++ ['}'] := by
   induction kvs with
   | nil => rfl
   | cons kv kvs ih =>
-    rw [encObjBody_cons, encObjSep_cons]
+    rw [encObjBody_cons]
     cases kvs with
-    | nil => simp [encObjSuffix]
+    | nil => simp [encObjSuffix, encObjSep]
     | cons kv' kvs' =>
-      rw [encObjSuffix_cons, encObjSep_cons, List.append_assoc, ih]
+      have ih' : encObjPairChars kv' ++ encObjSuffix kvs' = encObjSep (kv' :: kvs') ++ ['}'] := by
+        rw [← encObjBody_cons]; exact ih
+      rw [encObjSuffix_cons, encObjSep_cons]
+      simp only [List.cons_append, List.append_assoc, ih']
 
 theorem jcsEncodeChars_arr (xs : List OmegaJson) :
     jcsEncodeChars (OmegaJson.arr xs) = '[' :: encArrBody xs := rfl
@@ -470,58 +455,88 @@ theorem jcsEncodeChars_obj (kvs : List (String × OmegaJson)) :
     jcsEncodeChars (OmegaJson.obj kvs) = '{' :: encObjBody kvs := rfl
 
 
-theorem nodeCount_lt_encode_len_arr (xs : List OmegaJson) :
-    nodeCount (OmegaJson.arr xs) < (jcsEncodeChars (OmegaJson.arr xs)).length + 1 := by
-  rw [jcsEncodeChars_arr]
-  simp only [nodeCount, List.length_cons]
-  induction xs with
-  | nil => simp [encArrBody]
-  | cons v xs ih =>
-    rw [encArrBody_cons, encSep_cons]
-    have hv := nodeCount_lt_encode_len v
-    cases xs with
-    | nil => simp [encArrSuffix]; omega
-    | cons w ws =>
-      rw [encArrSuffix_cons, encSep_cons]
-      have hw := nodeCount_lt_encode_len w
-      simp [List.length_append]; omega
-
-theorem nodeCount_lt_encode_len_obj (kvs : List (String × OmegaJson)) :
-    nodeCount (OmegaJson.obj kvs) < (jcsEncodeChars (OmegaJson.obj kvs)).length + 1 := by
-  rw [jcsEncodeChars_obj]
-  simp only [nodeCount, List.length_cons]
-  induction kvs with
-  | nil => simp [encObjBody]
-  | cons kv kvs ih =>
-    rw [encObjBody_cons, encObjSep_cons]
-    have hv := nodeCount_lt_encode_len kv.2
-    cases kvs with
-    | nil => simp [encObjSuffix]; omega
-    | cons kv' kvs' =>
-      rw [encObjSuffix_cons, encObjSep_cons]
-      have hw := nodeCount_lt_encode_len kv'.2
-      simp [encObjPairChars, jcsEscapeStringChars, List.length_append]; omega
-
-theorem nodeCount_lt_encode_len (v : OmegaJson) : nodeCount v < (jcsEncodeChars v).length + 1 := by
+-- Fuel bound: `nodeCount v` is strictly below the encoded length (+1), with the
+-- suffix/body length helpers proved in the same mutual block since the encoder and
+-- `nodeCount` recurse together through `OmegaJson`.
+mutual
+theorem nodeCount_lt_encode_len (v : OmegaJson) :
+    nodeCount v < (jcsEncodeChars v).length + 1 := by
   cases v with
-  | null => simp [nodeCount, jcsEncodeChars]
-  | bool b => cases b <;> simp [nodeCount, jcsEncodeChars]
+  | null => simp [nodeCount, jcsEncodeChars]; decide
+  | bool b => cases b <;> (simp [nodeCount, jcsEncodeChars]; decide)
   | int n =>
     simp only [nodeCount, jcsEncodeChars]
     cases n with
     | ofNat m =>
       by_cases hm : m = 0
       · subst hm; simp [intToStringChars, natToDecimal]
-      · have : 0 < (natToDecimal m).length := by
-          unfold natToDecimal
-          simp only [hm, ↓reduceIte, List.length_cons, Nat.zero_lt_one]
+      · have hid : intToStringChars (Int.ofNat m) = natToDecimal m := by
+          unfold intToStringChars; simp
+        rw [hid]
+        have hlen : 0 < (natToDecimal m).length := by
+          rw [natToDecimal, if_neg hm, natToDecimalAux_step m hm [],
+              natToDecimalAux_acc (m / 10) [Char.ofNat (m % 10 + '0'.toNat)]]
+          simp
         omega
     | negSucc _ =>
       simp [intToStringChars, List.length_cons, Nat.zero_lt_succ]
   | str _ =>
     simp [nodeCount, jcsEncodeChars, jcsEscapeStringChars, List.length_cons, Nat.zero_lt_succ]
-  | arr xs => exact nodeCount_lt_encode_len_arr xs
-  | obj kvs => exact nodeCount_lt_encode_len_obj kvs
+  | arr xs =>
+    rw [jcsEncodeChars_arr]
+    simp only [nodeCount, List.length_cons]
+    have := nodeCountList_lt_arrBody xs
+    omega
+  | obj kvs =>
+    rw [jcsEncodeChars_obj]
+    simp only [nodeCount, List.length_cons]
+    have := nodeCountObj_lt_objBody kvs
+    omega
+
+theorem nodeCountList_lt_arrBody (xs : List OmegaJson) :
+    nodeCountList xs < (encArrBody xs).length + 1 := by
+  match xs with
+  | [] => simp [encArrBody, nodeCountList]
+  | v :: vs =>
+    rw [encArrBody_cons, List.length_append]
+    have hv := nodeCount_lt_encode_len v
+    have ht := nodeCountList_lt_arrSuffix vs
+    simp only [nodeCountList]
+    omega
+
+theorem nodeCountList_lt_arrSuffix (xs : List OmegaJson) :
+    nodeCountList xs < (encArrSuffix xs).length + 1 := by
+  match xs with
+  | [] => simp [encArrSuffix, nodeCountList]
+  | v :: vs =>
+    rw [encArrSuffix_cons, List.length_append, List.length_cons]
+    have hv := nodeCount_lt_encode_len v
+    have ht := nodeCountList_lt_arrSuffix vs
+    simp only [nodeCountList]
+    omega
+
+theorem nodeCountObj_lt_objBody (kvs : List (String × OmegaJson)) :
+    nodeCountObj kvs < (encObjBody kvs).length + 1 := by
+  match kvs with
+  | [] => simp [encObjBody, nodeCountObj]
+  | ⟨k, v⟩ :: kvs' =>
+    rw [encObjBody_cons, List.length_append, encObjPairChars]
+    have hv := nodeCount_lt_encode_len v
+    have ht := nodeCountObj_lt_objSuffix kvs'
+    simp only [nodeCountObj, List.length_append, List.length_cons]
+    omega
+
+theorem nodeCountObj_lt_objSuffix (kvs : List (String × OmegaJson)) :
+    nodeCountObj kvs < (encObjSuffix kvs).length + 1 := by
+  match kvs with
+  | [] => simp [encObjSuffix, nodeCountObj]
+  | ⟨k, v⟩ :: kvs' =>
+    rw [encObjSuffix_cons, encObjPairChars]
+    have hv := nodeCount_lt_encode_len v
+    have ht := nodeCountObj_lt_objSuffix kvs'
+    simp only [nodeCountObj, List.length_append, List.length_cons]
+    omega
+end
 
 end EncodeList
 
