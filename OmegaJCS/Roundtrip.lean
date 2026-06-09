@@ -203,14 +203,26 @@ end ParseString
 
 section NumberParse
 
+/-- `rest` does not begin with a decimal digit. This is the precondition under which
+    the greedy digit parser halts exactly at the encoded number's boundary; at every
+    call site `rest` is either empty or starts with a structural byte (`,` `]` `}` `:`). -/
+def NoLeadDigit (rest : List Char) : Prop := ∀ c t, rest = c :: t → isDigit c = false
+
+theorem noLeadDigit_nil : NoLeadDigit [] := by intro c t h; cases h
+
+theorem noLeadDigit_cons (c : Char) (t : List Char) (hc : isDigit c = false) :
+    NoLeadDigit (c :: t) := by intro c' t' h; cases h; exact hc
+
 private theorem isDigit_ofNat_digit (d : Nat) (hd : d < 10) :
     isDigit (Char.ofNat (d + '0'.toNat)) = true := by
   revert d hd
   decide +revert
 
-private theorem parseNatDigits_nil (rest : List Char) (acc : Nat) :
+private theorem parseNatDigits_nil (rest : List Char) (acc : Nat) (h : NoLeadDigit rest) :
     parseNatDigits rest acc = some (acc, rest) := by
-  cases rest <;> simp [parseNatDigits]
+  cases rest with
+  | nil => simp [parseNatDigits]
+  | cons c t => simp [parseNatDigits, h c t rfl]
 
 private theorem parseNatDigits_cons (c : Char) (s rest : List Char) (acc : Nat) :
     parseNatDigits (c :: s ++ rest) acc =
@@ -221,82 +233,140 @@ private theorem parseNatDigits_cons (c : Char) (s rest : List Char) (acc : Nat) 
   simp [parseNatDigits, List.append_assoc]
 
 private theorem parseNatDigits_all_digits (digits : List Char) (rest : List Char) (acc : Nat)
-    (hd : ∀ c ∈ digits, isDigit c = true) :
+    (hd : ∀ c ∈ digits, isDigit c = true) (hrest : NoLeadDigit rest) :
     parseNatDigits (digits ++ rest) acc =
       some (digits.foldl (fun a c => a * 10 + (c.toNat - '0'.toNat)) acc, rest) := by
   induction digits generalizing acc with
-  | nil => simp [parseNatDigits_nil]
+  | nil => simpa using parseNatDigits_nil rest acc hrest
   | cons c digits ih =>
     have hdc := hd c (by simp)
     have hd' : ∀ c' ∈ digits, isDigit c' = true := fun c' hc' =>
       hd c' (by simp [List.mem_cons]; exact Or.inr hc')
     rw [parseNatDigits_cons, if_pos hdc, ih _ hd', List.foldl_cons]
 
+private theorem digit_toNat_sub (d : Nat) (hd : d < 10) :
+    (Char.ofNat (d + '0'.toNat)).toNat - '0'.toNat = d := by revert d hd; decide +revert
+
+private theorem natToDecimalAux_zero (acc : List Char) : natToDecimalAux 0 acc = acc := by
+  unfold natToDecimalAux; rfl
+
+private theorem natToDecimalAux_step (n : Nat) (hn : n ≠ 0) (acc : List Char) :
+    natToDecimalAux n acc = natToDecimalAux (n / 10) (Char.ofNat (n % 10 + '0'.toNat) :: acc) := by
+  rw [natToDecimalAux, dif_neg hn]
+
+/-- Accumulator factoring: the loop only prepends its running accumulator, so the
+    accumulator can be split off as a suffix. This is what lets the strong-induction
+    hypothesis (stated for the empty accumulator) apply to the recursive call. -/
+private theorem natToDecimalAux_acc (n : Nat) (acc : List Char) :
+    natToDecimalAux n acc = natToDecimalAux n [] ++ acc := by
+  induction n using Nat.strongRecOn generalizing acc with
+  | _ n ih =>
+    by_cases hn : n = 0
+    · subst hn; rw [natToDecimalAux_zero, natToDecimalAux_zero, List.nil_append]
+    · have hlt : n / 10 < n := Nat.div_lt_self (Nat.zero_lt_of_ne_zero hn) (by decide)
+      rw [natToDecimalAux_step n hn acc, ih (n/10) hlt (Char.ofNat (n % 10 + '0'.toNat) :: acc),
+          natToDecimalAux_step n hn [], ih (n/10) hlt [Char.ofNat (n % 10 + '0'.toNat)]]
+      simp
+
 private theorem natToDecimalAux_eq (n : Nat) (hn : n ≠ 0) :
     (natToDecimalAux n []).foldl (fun a c => a * 10 + (c.toNat - '0'.toNat)) 0 = n := by
   induction n using Nat.strongRecOn with
   | _ n ih =>
-    unfold natToDecimalAux
-    rw [dif_neg hn]
+    have hd10 : n % 10 < 10 := Nat.mod_lt n (by decide)
+    rw [natToDecimalAux_step n hn [], natToDecimalAux_acc (n/10) [Char.ofNat (n % 10 + '0'.toNat)],
+        List.foldl_append, List.foldl_cons, List.foldl_nil, digit_toNat_sub _ hd10]
     by_cases h10 : n < 10
     · have hn10 : n / 10 = 0 := Nat.div_eq_of_lt h10
-      have hmod : n % 10 = n := Nat.mod_eq_of_lt h10
-      simp only [hn10, hmod, List.foldl_nil, List.foldl_cons]
-      have := Nat.div_add_mod n 10
-      omega
+      rw [hn10, natToDecimalAux_zero, List.foldl_nil]
+      have := Nat.div_add_mod n 10; omega
     · have hn' : n / 10 ≠ 0 := by omega
       have ih' := ih (n / 10) (Nat.div_lt_self (by omega) (by decide)) hn'
-      simp only [List.foldl_cons, ih', Nat.mul_comm]
-      have := Nat.div_add_mod n 10
-      omega
+      rw [ih']
+      have := Nat.div_add_mod n 10; omega
 
 private theorem natToDecimalAux_all_digits (n : Nat) (hn : n ≠ 0) :
     ∀ c ∈ natToDecimalAux n [], isDigit c = true := by
   induction n using Nat.strongRecOn with
   | _ n ih =>
     intro c hc
-    unfold natToDecimalAux at hc
-    rw [dif_neg hn] at hc
-    simp only [List.mem_cons, List.mem_nil_iff, false_or] at hc
-    rcases hc with rfl | hc
-    · exact isDigit_ofNat_digit (n % 10) (Nat.mod_lt n (by decide))
-    · have hn' : n / 10 ≠ 0 := by
-        by_cases h10 : n < 10
-        · have : n / 10 = 0 := Nat.div_eq_of_lt h10
-          simp [this] at hc
-        · omega
-      exact ih (n / 10) (Nat.div_lt_self (by omega) (by decide)) hn' c hc
+    have hd10 : n % 10 < 10 := Nat.mod_lt n (by decide)
+    rw [natToDecimalAux_step n hn [], natToDecimalAux_acc (n/10) [Char.ofNat (n % 10 + '0'.toNat)],
+        List.mem_append] at hc
+    rcases hc with hc | hc
+    · by_cases hn' : n / 10 = 0
+      · rw [hn', natToDecimalAux_zero] at hc; exact absurd hc (List.not_mem_nil)
+      · exact ih (n / 10) (Nat.div_lt_self (by omega) (by decide)) hn' c hc
+    · simp only [List.mem_singleton] at hc
+      subst hc
+      exact isDigit_ofNat_digit (n % 10) hd10
 
-private theorem natToDecimalAux_spec (n : Nat) (rest : List Char) (hn : n ≠ 0) :
+private theorem natToDecimalAux_spec (n : Nat) (rest : List Char) (hn : n ≠ 0)
+    (hrest : NoLeadDigit rest) :
     parseNatDigits (natToDecimalAux n [] ++ rest) 0 = some (n, rest) := by
   have hd := natToDecimalAux_all_digits n hn
-  have hfold := natToDecimalAux_eq n hn
-  simpa [hfold] using parseNatDigits_all_digits (natToDecimalAux n []) rest 0 hd
+  have e := parseNatDigits_all_digits (natToDecimalAux n []) rest 0 hd hrest
+  rw [natToDecimalAux_eq n hn] at e
+  exact e
 
-theorem parseNatDigits_natToDecimal (n : Nat) (rest : List Char) :
+theorem parseNatDigits_natToDecimal (n : Nat) (rest : List Char) (hrest : NoLeadDigit rest) :
     parseNatDigits (natToDecimal n ++ rest) 0 = some (n, rest) := by
   cases n with
   | zero =>
     simp [natToDecimal, parseNatDigits, isDigit]
-    exact parseNatDigits_nil rest 0
+    exact parseNatDigits_nil rest 0 hrest
   | succ n =>
     unfold natToDecimal
     simp only [Nat.succ_ne_zero, ↓reduceIte]
-    exact natToDecimalAux_spec (n + 1) rest (Nat.succ_ne_zero n)
+    exact natToDecimalAux_spec (n + 1) rest (Nat.succ_ne_zero n) hrest
 
-theorem parseInt_intToStringChars (n : Int) (rest : List Char) :
+/-- parseInt on a digit-led list reduces to the nat-digit parser (the `'-'` arm is
+    skipped because a digit is not `'-'`). -/
+private theorem parseInt_digit_led (e : Char) (es rest : List Char) (k : Nat)
+    (hdig : isDigit e = true) (hpd : parseNatDigits (e :: es) 0 = some (k, rest)) :
+    parseInt (e :: es) = some (Int.ofNat k, rest) := by
+  have hdash : e ≠ '-' := by intro h; subst h; revert hdig; decide
+  unfold parseInt
+  split
+  · rename_i rest' heq; injection heq with h1 _; exact absurd h1 hdash
+  · rename_i c s heq; injection heq with h1 h2; subst h1; rw [if_pos hdig, hpd]
+  · rename_i heq; exact absurd heq (by simp)
+
+private theorem parseInt_natToDecimal (k : Nat) (rest : List Char) (hrest : NoLeadDigit rest) :
+    parseInt (natToDecimal k ++ rest) = some (Int.ofNat k, rest) := by
+  have hne : natToDecimal k ≠ [] := by
+    cases k with
+    | zero => simp [natToDecimal]
+    | succ k =>
+      rw [natToDecimal, if_neg (Nat.succ_ne_zero k), natToDecimalAux_step _ (Nat.succ_ne_zero k) [],
+          natToDecimalAux_acc ((k+1)/10) [Char.ofNat ((k+1) % 10 + '0'.toNat)]]
+      simp
+  obtain ⟨e, es, he⟩ := List.exists_cons_of_ne_nil hne
+  have hmem : e ∈ natToDecimal k := he ▸ List.mem_cons_self
+  have hdig : isDigit e = true := by
+    cases k with
+    | zero => rw [natToDecimal] at hmem; simp at hmem; subst hmem; decide
+    | succ k =>
+      rw [natToDecimal, if_neg (Nat.succ_ne_zero k)] at hmem
+      exact natToDecimalAux_all_digits _ (Nat.succ_ne_zero k) e hmem
+  have hpd : parseNatDigits (e :: (es ++ rest)) 0 = some (k, rest) := by
+    have := parseNatDigits_natToDecimal k rest hrest; rwa [he, List.cons_append] at this
+  rw [he, List.cons_append]
+  exact parseInt_digit_led e (es ++ rest) rest k hdig hpd
+
+theorem parseInt_intToStringChars (n : Int) (rest : List Char) (hrest : NoLeadDigit rest) :
     parseInt (intToStringChars n ++ rest) = some (n, rest) := by
-  unfold parseInt intToStringChars
   cases n with
   | ofNat n =>
-    by_cases hn : n = 0
-    · subst hn
-      simp [natToDecimal, parseNatDigits, isDigit]
-      exact parseNatDigits_nil rest 0
-    · have hn' : 0 < n := Nat.pos_of_ne_zero hn
-      simp only [hn', ↓reduceIte, parseNatDigits_natToDecimal]
+    have h : intToStringChars (Int.ofNat n) = natToDecimal n := by
+      unfold intToStringChars; simp
+    rw [h]; exact parseInt_natToDecimal n rest hrest
   | negSucc n =>
-    simp only [parseNatDigits_natToDecimal, List.cons_append]
+    have h : intToStringChars (Int.negSucc n) = '-' :: natToDecimal (n + 1) := by
+      unfold intToStringChars; rw [if_pos (Int.negSucc_lt_zero n)]; rfl
+    rw [h, List.cons_append]
+    unfold parseInt
+    simp only [parseNatDigits_natToDecimal (n + 1) rest hrest]
+    congr 1
 
 end NumberParse
 
