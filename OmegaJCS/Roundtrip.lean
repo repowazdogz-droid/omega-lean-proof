@@ -1,25 +1,584 @@
+import Init.Data.Nat.Bitwise.Lemmas
 import OmegaJCS.Types
 import OmegaJCS.Encode
 import OmegaJCS.Decode
 
 namespace OmegaJCS
 
-/-- Roundtrip on encoder output (verification artifact; decoder is not a general JSON parser). -/
+/-! Roundtrip on encoder output (decoder is not a general JSON parser). -/
+
+section Prefix
+
+theorem takePrefix_append (pre : String) (rest : List Char) :
+    takePrefix (pre.toList ++ rest) pre = some rest := by
+  unfold takePrefix startsWith
+  have hlen : pre.toList.length = pre.length := by rw [String.length_toList]
+  have htake : (pre.toList ++ rest).take pre.length = pre.toList := by
+    rw [List.take_append, ← hlen, Nat.sub_self, List.take_zero, List.append_nil, List.take_length]
+  have hdrop : (pre.toList ++ rest).drop pre.length = rest := by
+    rw [List.drop_append, hlen, Nat.sub_self, List.drop_zero, ← hlen, List.drop_length, List.nil_append]
+  simp [htake, hdrop]
+
+theorem takePrefix_true_not_null (rest : List Char) :
+    takePrefix ("true".toList ++ rest) "null" = none := by
+  unfold takePrefix startsWith; cases rest <;> rfl
+
+theorem takePrefix_false_not_null (rest : List Char) :
+    takePrefix ("false".toList ++ rest) "null" = none := by
+  unfold takePrefix startsWith; cases rest <;> rfl
+
+theorem takePrefix_false_not_true (rest : List Char) :
+    takePrefix ("false".toList ++ rest) "true" = none := by
+  unfold takePrefix startsWith; cases rest <;> rfl
+
+end Prefix
+
+section StringJoin
+
+theorem foldl_append_start (pfx start : String) (ss : List String) :
+    List.foldl (fun r s => r ++ s) (pfx ++ start) ss =
+      pfx ++ List.foldl (fun r s => r ++ s) start ss := by
+  induction ss generalizing start with
+  | nil => simp [List.foldl_nil, String.append_assoc]
+  | cons t ts ih =>
+    simp only [List.foldl_cons]
+    rw [String.append_assoc]
+    exact ih (start ++ t)
+
+theorem String_join_cons (s : String) (ss : List String) :
+    String.join (s :: ss) = s ++ String.join ss := by
+  unfold String.join
+  simpa [String.empty_append] using foldl_append_start s "" ss
+
+theorem stringJoin_map_escapeChar (cs : List Char) :
+    (String.join (cs.map escapeChar)).toList = escapeStringChars cs := by
+  induction cs with
+  | nil => simp [escapeStringChars, String.join]
+  | cons c cs ih =>
+    simp only [escapeStringChars, escapeCharList, List.flatMap_cons, List.map_cons,
+      String_join_cons, String.toList_append, ih]
+
+@[simp] theorem jcsEscapeStringChars_spec (s : String) :
+    jcsEscapeStringChars s = '"' :: escapeStringChars s.toList ++ ['"'] := rfl
+
+end StringJoin
+
+section Hex
+
+private theorem land_f_lt16 (x : Nat) : x &&& 0xF < 16 :=
+  Nat.lt_succ_iff.mpr (Nat.and_le_right (n := x) (m := 0xF))
+
+private theorem hexDigit_spec (n : Nat) (hn : n < 16) :
+    hexValue (hexDigit n) = some n := by
+  revert n hn
+  decide +revert
+
+private theorem hex4_recomb_small (n : Nat) (hn : n < 0x20) :
+    (n >>> 12 &&& 0xF) * 4096 +
+      (n >>> 8 &&& 0xF) * 256 +
+      (n >>> 4 &&& 0xF) * 16 +
+      (n &&& 0xF) = n := by
+  revert n hn
+  decide +revert
+
+private theorem hex4Lower_toList (n : Nat) :
+    (hex4Lower n).toList =
+      [hexDigit ((n >>> 12) &&& 0xF), hexDigit ((n >>> 8) &&& 0xF),
+        hexDigit ((n >>> 4) &&& 0xF), hexDigit (n &&& 0xF)] := by
+  unfold hex4Lower
+  simp [String.toList_ofList]
+
+private theorem hex4Lower_parseHex4 (n : Nat) (hn : n < 0x20) (rest : List Char) :
+    parseHex4 ((hex4Lower n).toList ++ rest) = some (n, rest) := by
+  rw [hex4Lower_toList, List.cons_append]
+  have hflat :
+      hexDigit (n >>> 12 &&& 0xF) ::
+        ([hexDigit (n >>> 8 &&& 0xF), hexDigit (n >>> 4 &&& 0xF), hexDigit (n &&& 0xF)] ++ rest) =
+      hexDigit (n >>> 12 &&& 0xF) :: hexDigit (n >>> 8 &&& 0xF) :: hexDigit (n >>> 4 &&& 0xF) ::
+        hexDigit (n &&& 0xF) :: rest := by
+    simp [List.cons_append, List.nil_append]
+  have h0 := hexDigit_spec ((n >>> 12) &&& 0xF) (land_f_lt16 _)
+  have h1 := hexDigit_spec ((n >>> 8) &&& 0xF) (land_f_lt16 _)
+  have h2 := hexDigit_spec ((n >>> 4) &&& 0xF) (land_f_lt16 _)
+  have h3 := hexDigit_spec (n &&& 0xF) (land_f_lt16 _)
+  rw [hflat]
+  unfold parseHex4
+  simp [h0, h1, h2, h3, hex4_recomb_small n hn]
+
+end Hex
+
+section ParseString
+
+private theorem escapeCharList_quote : escapeCharList '"' = ['\\', '"'] := by native_decide
+private theorem escapeCharList_backslash : escapeCharList '\\' = ['\\', '\\'] := by native_decide
+
+private theorem parseStringChars_escapeCharList_quote (acc rest : List Char) :
+    parseStringChars (escapeCharList '"' ++ rest) acc = parseStringChars rest (acc ++ ['"']) := by
+  rw [escapeCharList_quote]; simp [parseStringChars, List.cons_append, List.nil_append]
+
+private theorem parseStringChars_escapeCharList_backslash (acc rest : List Char) :
+    parseStringChars (escapeCharList '\\' ++ rest) acc = parseStringChars rest (acc ++ ['\\']) := by
+  rw [escapeCharList_backslash]; simp [parseStringChars, List.cons_append, List.nil_append]
+
+private theorem parseStringChars_escapeCharList_ctrl (acc rest : List Char) (tag : Char)
+    (h : tag = 'b' ∨ tag = 'f' ∨ tag = 'n' ∨ tag = 'r' ∨ tag = 't') :
+    parseStringChars (['\\', tag] ++ rest) acc =
+      parseStringChars rest (acc ++ [match tag with
+        | 'b' => Char.ofNat 0x08 | 'f' => Char.ofNat 0x0C | 'n' => Char.ofNat 0x0A
+        | 'r' => Char.ofNat 0x0D | 't' => Char.ofNat 0x09 | _ => tag]) := by
+  rcases h with rfl | rfl | rfl | rfl | rfl <;> simp [parseStringChars, List.cons_append]
+
+private theorem parseStringChars_escapeCharList_unicode (c : Char) (acc rest : List Char)
+    (h1 : c ≠ '"') (h2 : c ≠ '\\') (h3 : c.toNat ≠ 0x08) (h4 : c.toNat ≠ 0x0C)
+    (h5 : c.toNat ≠ 0x0A) (h6 : c.toNat ≠ 0x0D) (h7 : c.toNat ≠ 0x09) (hlt : c.toNat < 0x20) :
+    parseStringChars (escapeCharList c ++ rest) acc = parseStringChars rest (acc ++ [c]) := by
+  simp [escapeCharList, escapeChar, beq_iff_eq, h1, h2, h3, h4, h5, h6, h7, if_false, hlt, if_pos,
+    String.append, String.toList, List.cons_append, List.nil_append, hex4Lower, hex4Lower_toList]
+  have h0 := hexDigit_spec ((c.toNat >>> 12) &&& 0xF) (land_f_lt16 _)
+  have h1d := hexDigit_spec ((c.toNat >>> 8) &&& 0xF) (land_f_lt16 _)
+  have h2d := hexDigit_spec ((c.toNat >>> 4) &&& 0xF) (land_f_lt16 _)
+  have h3d := hexDigit_spec (c.toNat &&& 0xF) (land_f_lt16 _)
+  simp [parseStringChars, List.cons_append, List.nil_append, h0, h1d, h2d, h3d, hex4_recomb_small c.toNat (by omega)]
+
+private theorem parseStringChars_escapeCharList_plain (c : Char) (acc rest : List Char)
+    (h1 : c ≠ '"') (h2 : c ≠ '\\') (h3 : c.toNat ≠ 0x08) (h4 : c.toNat ≠ 0x0C)
+    (h5 : c.toNat ≠ 0x0A) (h6 : c.toNat ≠ 0x0D) (h7 : c.toNat ≠ 0x09) (h8 : ¬ c.toNat < 0x20) :
+    parseStringChars (escapeCharList c ++ rest) acc = parseStringChars rest (acc ++ [c]) := by
+  simp [escapeCharList, escapeChar, beq_iff_eq, h1, h2, h3, h4, h5, h6, h7, if_false, h8, if_neg,
+    String.singleton, String.toList, List.cons_append, List.nil_append, parseStringChars]
+
+theorem parseStringChars_escapeCharList (c : Char) (acc rest : List Char) :
+    parseStringChars (escapeCharList c ++ rest) acc = parseStringChars rest (acc ++ [c]) := by
+  match c with
+  | '"' => exact parseStringChars_escapeCharList_quote acc rest
+  | '\\' => exact parseStringChars_escapeCharList_backslash acc rest
+  | c =>
+    by_cases h8 : c = Char.ofNat 0x08
+    · subst h8; exact parseStringChars_escapeCharList_ctrl acc rest 'b' (Or.inl rfl)
+    by_cases h12 : c = Char.ofNat 0x0C
+    · subst h12; exact parseStringChars_escapeCharList_ctrl acc rest 'f' (Or.inr (Or.inl rfl))
+    by_cases h10 : c = Char.ofNat 0x0A
+    · subst h10; exact parseStringChars_escapeCharList_ctrl acc rest 'n' (Or.inr (Or.inr (Or.inl rfl)))
+    by_cases h13 : c = Char.ofNat 0x0D
+    · subst h13; exact parseStringChars_escapeCharList_ctrl acc rest 'r' (Or.inr (Or.inr (Or.inr (Or.inl rfl))))
+    by_cases h9 : c = Char.ofNat 0x09
+    · subst h9; exact parseStringChars_escapeCharList_ctrl acc rest 't' (Or.inr (Or.inr (Or.inr (Or.inr rfl))))
+    by_cases hlt : c.toNat < 0x20
+    · have h1 : c ≠ '"' := by intro h; subst h; omega
+      have h2 : c ≠ '\\' := by intro h; subst h; omega
+      have h3 : c.toNat ≠ 0x08 := fun hn => h8 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h4 : c.toNat ≠ 0x0C := fun hn => h12 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h5 : c.toNat ≠ 0x0A := fun hn => h10 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h6 : c.toNat ≠ 0x0D := fun hn => h13 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h7 : c.toNat ≠ 0x09 := fun hn => h9 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      exact parseStringChars_escapeCharList_unicode c acc rest h1 h2 h3 h4 h5 h6 h7 hlt
+    · have h1 : c ≠ '"' := by intro h; subst h; omega
+      have h2 : c ≠ '\\' := by intro h; subst h; omega
+      have h3 : c.toNat ≠ 0x08 := fun hn => h8 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h4 : c.toNat ≠ 0x0C := fun hn => h12 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h5 : c.toNat ≠ 0x0A := fun hn => h10 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h6 : c.toNat ≠ 0x0D := fun hn => h13 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      have h7 : c.toNat ≠ 0x09 := fun hn => h9 (Char.ofNat_eq_iff.mpr (by simpa using hn))
+      exact parseStringChars_escapeCharList_plain c acc rest h1 h2 h3 h4 h5 h6 h7 hlt
+
+theorem parseStringChars_escapeStringChars (cs : List Char) (rest : List Char) (acc : List Char) :
+    parseStringChars (escapeStringChars cs ++ rest) acc = parseStringChars rest (acc ++ cs) := by
+  induction cs generalizing acc rest with
+  | nil => simp [escapeStringChars, parseStringChars, List.nil_append]
+  | cons c cs ih =>
+    simp [escapeStringChars, List.flatMap_cons, List.append_assoc]
+    rw [← List.append_assoc, parseStringChars_escapeCharList, ih]
+
+theorem parseStringChars_escapeString (s : String) (rest : List Char) :
+    parseStringChars (escapeStringChars s.toList ++ '"' :: rest) [] = some (s, rest) := by
+  have h := parseStringChars_escapeStringChars s.toList ('"' :: rest) []
+  rw [h]; simp [parseStringChars]
+
+theorem parseString_jcsEscapeString (s : String) (rest : List Char) :
+    parseString (jcsEscapeStringChars s ++ rest) = some (s, rest) := by
+  unfold parseString jcsEscapeStringChars
+  simpa [List.cons_append] using parseStringChars_escapeString s rest
+
+end ParseString
+
+
+section NumberParse
+
+private theorem isDigit_ofNat_digit (d : Nat) (hd : d < 10) :
+    isDigit (Char.ofNat (d + '0'.toNat)) = true := by
+  revert d hd
+  decide +revert
+
+private theorem parseNatDigits_nil (rest : List Char) (acc : Nat) :
+    parseNatDigits rest acc = some (acc, rest) := by
+  cases rest <;> simp [parseNatDigits]
+
+private theorem parseNatDigits_cons (c : Char) (s rest : List Char) (acc : Nat) :
+    parseNatDigits (c :: s ++ rest) acc =
+      if isDigit c then
+        parseNatDigits (s ++ rest) (acc * 10 + (c.toNat - '0'.toNat))
+      else
+        some (acc, c :: s ++ rest) := by
+  simp [parseNatDigits, List.append_assoc]
+
+private theorem parseNatDigits_all_digits (digits : List Char) (rest : List Char) (acc : Nat)
+    (hd : ∀ c ∈ digits, isDigit c = true) :
+    parseNatDigits (digits ++ rest) acc =
+      some (digits.foldl (fun a c => a * 10 + (c.toNat - '0'.toNat)) acc, rest) := by
+  induction digits generalizing acc with
+  | nil => simp [parseNatDigits_nil]
+  | cons c digits ih =>
+    have hdc := hd c (by simp)
+    have hd' : ∀ c' ∈ digits, isDigit c' = true := fun c' hc' =>
+      hd c' (by simp [List.mem_cons]; exact Or.inr hc')
+    rw [parseNatDigits_cons, if_pos hdc, ih _ hd', List.foldl_cons]
+
+private theorem natToDecimalAux_eq (n : Nat) (hn : n ≠ 0) :
+    (natToDecimalAux n []).foldl (fun a c => a * 10 + (c.toNat - '0'.toNat)) 0 = n := by
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+    unfold natToDecimalAux
+    rw [dif_neg hn]
+    by_cases h10 : n < 10
+    · have hn10 : n / 10 = 0 := Nat.div_eq_of_lt h10
+      have hmod : n % 10 = n := Nat.mod_eq_of_lt h10
+      simp only [hn10, hmod, List.foldl_nil, List.foldl_cons]
+      have := Nat.div_add_mod n 10
+      omega
+    · have hn' : n / 10 ≠ 0 := by omega
+      have ih' := ih (n / 10) (Nat.div_lt_self (by omega) (by decide)) hn'
+      simp only [List.foldl_cons, ih', Nat.mul_comm]
+      have := Nat.div_add_mod n 10
+      omega
+
+private theorem natToDecimalAux_all_digits (n : Nat) (hn : n ≠ 0) :
+    ∀ c ∈ natToDecimalAux n [], isDigit c = true := by
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+    intro c hc
+    unfold natToDecimalAux at hc
+    rw [dif_neg hn] at hc
+    simp only [List.mem_cons, List.mem_nil_iff, false_or] at hc
+    rcases hc with rfl | hc
+    · exact isDigit_ofNat_digit (n % 10) (Nat.mod_lt n (by decide))
+    · have hn' : n / 10 ≠ 0 := by
+        by_cases h10 : n < 10
+        · have : n / 10 = 0 := Nat.div_eq_of_lt h10
+          simp [this] at hc
+        · omega
+      exact ih (n / 10) (Nat.div_lt_self (by omega) (by decide)) hn' c hc
+
+private theorem natToDecimalAux_spec (n : Nat) (rest : List Char) (hn : n ≠ 0) :
+    parseNatDigits (natToDecimalAux n [] ++ rest) 0 = some (n, rest) := by
+  have hd := natToDecimalAux_all_digits n hn
+  have hfold := natToDecimalAux_eq n hn
+  simpa [hfold] using parseNatDigits_all_digits (natToDecimalAux n []) rest 0 hd
+
+theorem parseNatDigits_natToDecimal (n : Nat) (rest : List Char) :
+    parseNatDigits (natToDecimal n ++ rest) 0 = some (n, rest) := by
+  cases n with
+  | zero =>
+    simp [natToDecimal, parseNatDigits, isDigit]
+    exact parseNatDigits_nil rest 0
+  | succ n =>
+    unfold natToDecimal
+    simp only [Nat.succ_ne_zero, ↓reduceIte]
+    exact natToDecimalAux_spec (n + 1) rest (Nat.succ_ne_zero n)
+
+theorem parseInt_intToStringChars (n : Int) (rest : List Char) :
+    parseInt (intToStringChars n ++ rest) = some (n, rest) := by
+  unfold parseInt intToStringChars
+  cases n with
+  | ofNat n =>
+    by_cases hn : n = 0
+    · subst hn
+      simp [natToDecimal, parseNatDigits, isDigit]
+      exact parseNatDigits_nil rest 0
+    · have hn' : 0 < n := Nat.pos_of_ne_zero hn
+      simp only [hn', ↓reduceIte, parseNatDigits_natToDecimal]
+  | negSucc n =>
+    simp only [parseNatDigits_natToDecimal, List.cons_append]
+
+end NumberParse
+
+
+section EncodeList
+
+private def encSep (xs : List OmegaJson) : List Char :=
+  match xs with
+  | [] => []
+  | [v] => jcsEncodeChars v
+  | v :: w :: ws => jcsEncodeChars v ++ ',' :: encSep (w :: ws)
+
+private def encObjSep (kvs : List (String × OmegaJson)) : List Char :=
+  match kvs with
+  | [] => []
+  | [kv] => encObjPairChars kv
+  | kv :: kv' :: kvs' => encObjPairChars kv ++ ',' :: encObjSep (kv' :: kvs')
+
+theorem encSep_nil : encSep [] = [] := rfl
+
+theorem encSep_cons (v : OmegaJson) (vs : List OmegaJson) :
+    encSep (v :: vs) =
+      jcsEncodeChars v ++ (match vs with | [] => [] | w :: ws => ',' :: encSep (w :: ws)) := by
+  cases vs <;> simp [encSep]
+
+theorem encObjSep_nil : encObjSep [] = [] := rfl
+
+theorem encObjSep_cons (kv : String × OmegaJson) (kvs : List (String × OmegaJson)) :
+    encObjSep (kv :: kvs) =
+      encObjPairChars kv ++
+        (match kvs with | [] => [] | kv' :: kvs' => ',' :: encObjSep (kv' :: kvs')) := by
+  cases kvs <;> simp [encObjSep]
+
+theorem String_intercalate_singleton (s : String) :
+    String.intercalate "," [s] = s := by
+  unfold String.intercalate
+  rfl
+
+theorem String_intercalate_cons_cons (s t : String) (ss : List String) :
+    String.intercalate "," (s :: t :: ss) = s ++ "," ++ String.intercalate "," (t :: ss) := by
+  unfold String.intercalate
+  simp [String.append_assoc]
+
+theorem encObjSep_intercalate (kvs : List (String × OmegaJson)) :
+    (String.intercalate "," (kvs.map fun ⟨k, v⟩ => jcsEscapeString k ++ ":" ++ jcsEncode v)).toList =
+      encObjSep kvs := by
+  induction kvs with
+  | nil => simp [encObjSep, String.intercalate]
+  | cons kv kvs ih =>
+    cases kvs with
+    | nil =>
+      simp [encObjSep, encObjPairChars, String_intercalate_singleton, jcsEscapeStringChars,
+        jcsEncodeChars]
+    | cons kv' kvs' =>
+      simp only [encObjSep, List.map_cons, encObjPairChars, String_intercalate_cons_cons,
+        String.toList_append, jcsEscapeStringChars, jcsEncodeChars, ih]
+
+theorem encArrSuffix_cons (v : OmegaJson) (vs : List OmegaJson) :
+    encArrSuffix (v :: vs) = ',' :: jcsEncodeChars v ++ encArrSuffix vs := by
+  cases vs <;> dsimp [encArrSuffix] <;> rfl
+
+
+theorem encObjSuffix_cons (kv : String × OmegaJson) (kvs : List (String × OmegaJson)) :
+    encObjSuffix (kv :: kvs) = ',' :: encObjPairChars kv ++ encObjSuffix kvs := by
+  cases kvs <;> dsimp [encObjSuffix, encObjPairChars] <;> rfl
+
+
+theorem encArrBody_eq_encSep (xs : List OmegaJson) :
+    encArrBody xs = encSep xs ++ [']'] := by
+  induction xs with
+  | nil => rfl
+  | cons v xs ih =>
+    rw [encArrBody_cons, encSep_cons]
+    cases xs with
+    | nil => simp [encArrSuffix]
+    | cons w ws =>
+      rw [encArrSuffix_cons, encSep_cons, List.append_assoc, ih]
+
+theorem encObjBody_eq_encObjSep (kvs : List (String × OmegaJson)) :
+    encObjBody kvs = encObjSep kvs ++ ['}'] := by
+  induction kvs with
+  | nil => rfl
+  | cons kv kvs ih =>
+    rw [encObjBody_cons, encObjSep_cons]
+    cases kvs with
+    | nil => simp [encObjSuffix]
+    | cons kv' kvs' =>
+      rw [encObjSuffix_cons, encObjSep_cons, List.append_assoc, ih]
+
+theorem jcsEncodeChars_arr (xs : List OmegaJson) :
+    jcsEncodeChars (OmegaJson.arr xs) = '[' :: encArrBody xs := rfl
+
+
+theorem jcsEncodeChars_obj (kvs : List (String × OmegaJson)) :
+    jcsEncodeChars (OmegaJson.obj kvs) = '{' :: encObjBody kvs := rfl
+
+
+theorem nodeCount_lt_encode_len_arr (xs : List OmegaJson) :
+    nodeCount (OmegaJson.arr xs) < (jcsEncodeChars (OmegaJson.arr xs)).length + 1 := by
+  rw [jcsEncodeChars_arr]
+  simp only [nodeCount, List.length_cons]
+  induction xs with
+  | nil => simp [encArrBody]
+  | cons v xs ih =>
+    rw [encArrBody_cons, encSep_cons]
+    have hv := nodeCount_lt_encode_len v
+    cases xs with
+    | nil => simp [encArrSuffix]; omega
+    | cons w ws =>
+      rw [encArrSuffix_cons, encSep_cons]
+      have hw := nodeCount_lt_encode_len w
+      simp [List.length_append]; omega
+
+theorem nodeCount_lt_encode_len_obj (kvs : List (String × OmegaJson)) :
+    nodeCount (OmegaJson.obj kvs) < (jcsEncodeChars (OmegaJson.obj kvs)).length + 1 := by
+  rw [jcsEncodeChars_obj]
+  simp only [nodeCount, List.length_cons]
+  induction kvs with
+  | nil => simp [encObjBody]
+  | cons kv kvs ih =>
+    rw [encObjBody_cons, encObjSep_cons]
+    have hv := nodeCount_lt_encode_len kv.2
+    cases kvs with
+    | nil => simp [encObjSuffix]; omega
+    | cons kv' kvs' =>
+      rw [encObjSuffix_cons, encObjSep_cons]
+      have hw := nodeCount_lt_encode_len kv'.2
+      simp [encObjPairChars, jcsEscapeStringChars, List.length_append]; omega
+
+theorem nodeCount_lt_encode_len (v : OmegaJson) : nodeCount v < (jcsEncodeChars v).length + 1 := by
+  cases v with
+  | null => simp [nodeCount, jcsEncodeChars]
+  | bool b => cases b <;> simp [nodeCount, jcsEncodeChars]
+  | int n =>
+    simp only [nodeCount, jcsEncodeChars]
+    cases n with
+    | ofNat m =>
+      by_cases hm : m = 0
+      · subst hm; simp [intToStringChars, natToDecimal]
+      · have : 0 < (natToDecimal m).length := by
+          unfold natToDecimal
+          simp only [hm, ↓reduceIte, List.length_cons, Nat.zero_lt_one]
+        omega
+    | negSucc _ =>
+      simp [intToStringChars, List.length_cons, Nat.zero_lt_succ]
+  | str _ =>
+    simp [nodeCount, jcsEncodeChars, jcsEscapeStringChars, List.length_cons, Nat.zero_lt_succ]
+  | arr xs => exact nodeCount_lt_encode_len_arr xs
+  | obj kvs => exact nodeCount_lt_encode_len_obj kvs
+
+end EncodeList
+
+section CompositeParse
+
+mutual
+  theorem parse_encode (v : OmegaJson) (h : v.WF) :
+      ∀ (fuel : Nat) (rest : List Char),
+        nodeCount v < fuel →
+        parseValueFuel fuel (jcsEncodeChars v ++ rest) = some (v, rest) := by
+    intro fuel rest hfuel
+    cases v with
+    | null =>
+      simp only [jcsEncodeChars, jcsEncode, takePrefix_append]
+    | bool b =>
+      cases b with
+      | true =>
+        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, takePrefix_true_not_null]
+      | false =>
+        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, takePrefix_false_not_null,
+          takePrefix_false_not_true]
+    | int n =>
+      cases h with
+      | int n _ =>
+        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, Option.bind_eq_bind]
+        simpa using parseInt_intToStringChars n rest
+    | str s =>
+      cases h with
+      | str s =>
+        simp only [jcsEncodeChars, jcsEncode, Option.bind_eq_bind]
+        simpa using parseString_jcsEscapeString s rest
+    | arr xs =>
+      cases h with
+      | arr xs hxs =>
+        have hf := by simp [nodeCount_arr, nodeCountList, nodeCount_ge_one]; omega
+        simp only [jcsEncodeChars, jcsEncodeChars_arr, takePrefix_append, Option.bind_eq_bind]
+        exact parseArray_encode fuel xs hxs rest hf
+    | obj kvs =>
+      cases h with
+      | obj kvs hvs _ =>
+        have hf := by simp [nodeCount_obj, nodeCountObj, nodeCount_ge_one]; omega
+        simp only [jcsEncodeChars, jcsEncodeChars_obj, takePrefix_append, Option.bind_eq_bind]
+        exact parseObject_encode fuel kvs hvs rest hf
+
+  theorem parseArray_encode (fuel : Nat) (xs : List OmegaJson) (hx : ∀ x ∈ xs, x.WF) (rest : List Char)
+      (hfuel : nodeCount (OmegaJson.arr xs) < fuel + 1) :
+      parseArrayFuel fuel (encArrBody xs ++ rest) [] = some (OmegaJson.arr xs, rest) := by
+    induction xs generalizing fuel rest with
+    | nil =>
+      simp only [encArrBody, parseArrayFuel, nodeCount_arr, List.sum_nil, Nat.add_one, Nat.add_zero]
+      rfl
+    | cons v xs ih =>
+      have hbody := encArrBody_cons v xs
+      have hnc_v : nodeCount v < nodeCount (OmegaJson.arr (v :: xs)) := nodeCount_lt_arr_cons v xs
+      have hnc_arr : nodeCount (OmegaJson.arr xs) < fuel := by
+        simp [nodeCount_arr, nodeCountList, List.sum_cons] at hfuel ⊢
+        omega
+      have hv := parse_encode v (hx v (by simp)) fuel (encArrSuffix xs ++ rest) hnc_v
+      rw [hbody, List.append_assoc]
+      cases xs with
+      | nil =>
+        simp only [encArrSuffix, hv, parseArrayFuel]
+      | cons w ws =>
+        have hstep := encArrSuffix_cons w ws
+        have hnc_w : nodeCount w < nodeCount (OmegaJson.arr (w :: ws)) := nodeCount_lt_arr_cons w ws
+        have hw := parse_encode w (hx w (by simp)) fuel (encArrSuffix ws ++ rest) hnc_w
+        have ih' := ih (fun x hx' => hx x (by simp [List.mem_cons] at hx'; cases hx' with | inl h => rw [h] | inr h => exact h)) fuel rest hnc_arr
+        simp only [hstep, hv, hw, ih', parseArrayFuel, List.append_assoc]
+
+  theorem parseObject_encode (fuel : Nat) (kvs : List (String × OmegaJson))
+      (hv : ∀ kv ∈ kvs, kv.2.WF) (rest : List Char)
+      (hfuel : nodeCount (OmegaJson.obj kvs) < fuel + 1) :
+      parseObjectFuel fuel (encObjBody kvs ++ rest) [] = some (OmegaJson.obj kvs, rest) := by
+    induction kvs generalizing fuel rest with
+    | nil =>
+      simp only [encObjBody, parseObjectFuel, nodeCount_obj, List.sum_nil, Nat.add_one, Nat.add_zero]
+      rfl
+    | cons kv kvs ih =>
+      have hbody := encObjBody_cons kv kvs
+      have hnc_v : nodeCount kv.2 < nodeCount (OmegaJson.obj (kv :: kvs)) :=
+        nodeCount_lt_obj_cons kv kvs
+      have hnc_obj : nodeCount (OmegaJson.obj kvs) < fuel := by
+        simp [nodeCount_obj, nodeCountObj, List.sum_cons] at hfuel ⊢
+        omega
+      have hk := parseString_jcsEscapeString kv.1
+        (':' :: jcsEncodeChars kv.2 ++ encObjSuffix kvs ++ rest)
+      have hv' := parse_encode kv.2 (hv kv (by simp)) fuel (encObjSuffix kvs ++ rest) hnc_v
+      rw [hbody, encObjPairChars, List.append_assoc]
+      cases kvs with
+      | nil =>
+        simp only [encObjSuffix, hk, hv', parseObjectFuel, parseObjectPairFuel]
+      | cons kv' kvs' =>
+        have hstep := encObjSuffix_cons kv' kvs'
+        have hnc_v' : nodeCount kv'.2 < nodeCount (OmegaJson.obj (kv' :: kvs')) :=
+          nodeCount_lt_obj_cons kv' kvs'
+        have hk' := parseString_jcsEscapeString kv'.1
+          (':' :: jcsEncodeChars kv'.2 ++ encObjSuffix kvs' ++ rest)
+        have hv'' := parse_encode kv'.2 (hv kv' (by simp)) fuel (encObjSuffix kvs' ++ rest) hnc_v'
+        have ih' := ih (fun kv hx' => hv kv (by simp [List.mem_cons] at hx'; cases hx' with | inl h => rw [h] | inr h => exact h)) fuel rest hnc_obj
+        simp only [hstep, hk, hv', hk', hv'', ih', parseObjectFuel, parseObjectPairFuel,
+          List.append_assoc]
+end
+
+end CompositeParse
+
+section Main
 
 theorem decode_encode (v : OmegaJson) (h : v.WF) :
     jcsDecode (jcsEncode v) = some v := by
-  sorry
+  unfold jcsDecode parseValue parseFuel
+  have hlen := nodeCount_lt_encode_len v
+  have hparse := parse_encode v h ((jcsEncodeChars v).length + 1) [] hlen
+  rw [← jcsEncode_toList] at hparse
+  simpa [String.toList, List.append_nil] using hparse
 
-theorem jcsEncode_injective (v w : OmegaJson) :
-    v.WF → w.WF → jcsEncode v = jcsEncode w → v = w := by
-  sorry
+theorem jcsEncode_injective (v w : OmegaJson) (hv : v.WF) (hw : w.WF)
+    (h : jcsEncode v = jcsEncode w) : v = w := by
+  have hdec : jcsDecode (jcsEncode v) = jcsDecode (jcsEncode w) := by rw [h]
+  rw [decode_encode v hv, decode_encode w hw] at hdec
+  exact Option.some_inj.mp hdec
 
-theorem canonicalBytesJCS_injective (v w : OmegaJson) :
-    v.WF → w.WF → canonicalBytesJCS v = canonicalBytesJCS w → v = w := by
-  sorry
+theorem canonicalBytesJCS_injective (v w : OmegaJson) (hv : v.WF) (hw : w.WF)
+    (h : canonicalBytesJCS v = canonicalBytesJCS w) : v = w := by
+  apply jcsEncode_injective v w hv hw
+  simp only [canonicalBytesJCS, String.toUTF8_eq_toByteArray] at h
+  exact (String.toByteArray_inj.mp h)
 
+#print axioms parse_encode
 #print axioms decode_encode
 #print axioms jcsEncode_injective
 #print axioms canonicalBytesJCS_injective
+
+end Main
 
 end OmegaJCS
