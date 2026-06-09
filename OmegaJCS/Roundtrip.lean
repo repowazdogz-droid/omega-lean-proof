@@ -363,6 +363,12 @@ theorem encObjSuffix_cons (kv : String × OmegaJson) (kvs : List (String × Omeg
     encObjSuffix (kv :: kvs) = ',' :: encObjPairChars kv ++ encObjSuffix kvs := by
   cases kvs <;> dsimp [encObjSuffix, encObjPairChars] <;> rfl
 
+theorem encArrBody_cons (v : OmegaJson) (vs : List OmegaJson) :
+    encArrBody (v :: vs) = jcsEncodeChars v ++ encArrSuffix vs := rfl
+
+theorem encObjBody_cons (kv : String × OmegaJson) (kvs : List (String × OmegaJson)) :
+    encObjBody (kv :: kvs) = encObjPairChars kv ++ encObjSuffix kvs := rfl
+
 
 theorem encArrBody_eq_encSep (xs : List OmegaJson) :
     encArrBody xs = encSep xs ++ [']'] := by
