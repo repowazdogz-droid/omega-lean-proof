@@ -542,44 +542,135 @@ end EncodeList
 
 section CompositeParse
 
+-- Dispatch helpers: at each `parseValueFuel` branch we must show the earlier
+-- keyword/number/string probes fail before the correct constructor fires.
+theorem takePrefix_head_ne {pre : String} {p : Char} {ps : List Char} (hpre : pre.toList = p :: ps)
+    {c : Char} {t : List Char} (hne : c ≠ p) : takePrefix (c :: t) pre = none := by
+  unfold takePrefix startsWith
+  have hlen : pre.length = ps.length + 1 := by
+    rw [← String.length_toList, hpre, List.length_cons]
+  have : ¬ ((c :: t).take pre.length = pre.toList) := by
+    rw [hpre, hlen, List.take_succ_cons]; simp [hne]
+  simp [this]
+
+theorem parseInt_cons_eq_none (c : Char) (t : List Char) (hd : isDigit c = false) (hm : c ≠ '-') :
+    parseInt (c :: t) = none := by
+  unfold parseInt
+  split
+  · rename_i rest heq; injection heq with h1 _; exact absurd h1 hm
+  · rename_i c' s heq; injection heq with h1 _; subst h1; rw [if_neg (by simp [hd])]
+  · rename_i heq; exact absurd heq (by simp)
+
+theorem parseString_cons_eq_none (c : Char) (t : List Char) (h : c ≠ '"') :
+    parseString (c :: t) = none := by
+  unfold parseString
+  split
+  · rename_i rest heq; injection heq with h1 _; exact absurd h1 h
+  · rfl
+
+theorem isDigit_ne_keyword {c : Char} (h : isDigit c = true) :
+    c ≠ 'n' ∧ c ≠ 't' ∧ c ≠ 'f' := by
+  refine ⟨?_, ?_, ?_⟩ <;> (rintro rfl; exact absurd h (by decide))
+
+theorem natToDecimal_head (k : Nat) : ∃ c t, natToDecimal k = c :: t ∧ isDigit c = true := by
+  have hne : natToDecimal k ≠ [] := by
+    cases k with
+    | zero => simp [natToDecimal]
+    | succ k =>
+      rw [natToDecimal, if_neg (Nat.succ_ne_zero k), natToDecimalAux_step _ (Nat.succ_ne_zero k) [],
+          natToDecimalAux_acc ((k + 1) / 10) [Char.ofNat ((k + 1) % 10 + '0'.toNat)]]
+      simp
+  obtain ⟨c, t, hc⟩ := List.exists_cons_of_ne_nil hne
+  refine ⟨c, t, hc, ?_⟩
+  have hmem : c ∈ natToDecimal k := hc ▸ List.mem_cons_self
+  cases k with
+  | zero => rw [natToDecimal] at hmem; simp at hmem; subst hmem; decide
+  | succ k =>
+    rw [natToDecimal, if_neg (Nat.succ_ne_zero k)] at hmem
+    exact natToDecimalAux_all_digits _ (Nat.succ_ne_zero k) c hmem
+
+theorem intToStringChars_head (n : Int) :
+    ∃ c t, intToStringChars n = c :: t ∧ c ≠ 'n' ∧ c ≠ 't' ∧ c ≠ 'f' := by
+  cases n with
+  | ofNat m =>
+    obtain ⟨c, t, hc, hdig⟩ := natToDecimal_head m
+    obtain ⟨h1, h2, h3⟩ := isDigit_ne_keyword hdig
+    refine ⟨c, t, ?_, h1, h2, h3⟩
+    rw [show intToStringChars (Int.ofNat m) = natToDecimal m from by unfold intToStringChars; simp, hc]
+  | negSucc m =>
+    refine ⟨'-', natToDecimal (m + 1), ?_, by decide, by decide, by decide⟩
+    unfold intToStringChars; rw [if_pos (Int.negSucc_lt_zero m)]; rfl
+
 mutual
   theorem parse_encode (v : OmegaJson) (h : v.WF) :
       ∀ (fuel : Nat) (rest : List Char),
+        NoLeadDigit rest →
         nodeCount v < fuel →
         parseValueFuel fuel (jcsEncodeChars v ++ rest) = some (v, rest) := by
-    intro fuel rest hfuel
+    intro fuel rest hrest hfuel
+    have h1 := nodeCount_ge_one v
+    obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
     cases v with
     | null =>
-      simp only [jcsEncodeChars, jcsEncode, takePrefix_append]
+      simp only [jcsEncodeChars, parseValueFuel, takePrefix_append]
     | bool b =>
       cases b with
       | true =>
-        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, takePrefix_true_not_null]
+        simp only [jcsEncodeChars, parseValueFuel, takePrefix_append, takePrefix_true_not_null]
       | false =>
-        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, takePrefix_false_not_null,
+        simp only [jcsEncodeChars, parseValueFuel, takePrefix_append, takePrefix_false_not_null,
           takePrefix_false_not_true]
     | int n =>
-      cases h with
-      | int n _ =>
-        simp only [jcsEncodeChars, jcsEncode, takePrefix_append, Option.bind_eq_bind]
-        simpa using parseInt_intToStringChars n rest
+      obtain ⟨c, t, hc, hcn, hct, hcf⟩ := intToStringChars_head n
+      have hc' : intToStringChars n ++ rest = c :: (t ++ rest) := by rw [hc, List.cons_append]
+      rw [show jcsEncodeChars (OmegaJson.int n) = intToStringChars n from rfl]
+      simp only [parseValueFuel,
+        show takePrefix (intToStringChars n ++ rest) "null" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("null").toList = 'n' :: ['u','l','l'] from rfl) hcn,
+        show takePrefix (intToStringChars n ++ rest) "true" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("true").toList = 't' :: ['r','u','e'] from rfl) hct,
+        show takePrefix (intToStringChars n ++ rest) "false" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("false").toList = 'f' :: ['a','l','s','e'] from rfl) hcf,
+        parseInt_intToStringChars n rest hrest]
     | str s =>
-      cases h with
-      | str s =>
-        simp only [jcsEncodeChars, jcsEncode, Option.bind_eq_bind]
-        simpa using parseString_jcsEscapeString s rest
+      have hc' : jcsEscapeStringChars s ++ rest = '"' :: (escapeStringChars s.toList ++ ['"'] ++ rest) := by
+        rw [jcsEscapeStringChars_spec]; simp [List.cons_append, List.append_assoc]
+      rw [show jcsEncodeChars (OmegaJson.str s) = jcsEscapeStringChars s from rfl]
+      simp only [parseValueFuel,
+        show takePrefix (jcsEscapeStringChars s ++ rest) "null" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("null").toList = 'n' :: ['u','l','l'] from rfl) (by decide),
+        show takePrefix (jcsEscapeStringChars s ++ rest) "true" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("true").toList = 't' :: ['r','u','e'] from rfl) (by decide),
+        show takePrefix (jcsEscapeStringChars s ++ rest) "false" = none from by
+          rw [hc']; exact takePrefix_head_ne (show ("false").toList = 'f' :: ['a','l','s','e'] from rfl) (by decide),
+        show parseInt (jcsEscapeStringChars s ++ rest) = none from by
+          rw [hc']; exact parseInt_cons_eq_none '"' _ (by decide) (by decide),
+        parseString_jcsEscapeString s rest]
     | arr xs =>
       cases h with
       | arr xs hxs =>
-        have hf := by simp [nodeCount_arr, nodeCountList, nodeCount_ge_one]; omega
-        simp only [jcsEncodeChars, jcsEncodeChars_arr, takePrefix_append, Option.bind_eq_bind]
-        exact parseArray_encode fuel xs hxs rest hf
+        rw [jcsEncodeChars_arr, List.cons_append]
+        simp only [parseValueFuel,
+          takePrefix_head_ne (show ("null").toList = 'n' :: ['u','l','l'] from rfl) (show ('[' : Char) ≠ 'n' by decide),
+          takePrefix_head_ne (show ("true").toList = 't' :: ['r','u','e'] from rfl) (show ('[' : Char) ≠ 't' by decide),
+          takePrefix_head_ne (show ("false").toList = 'f' :: ['a','l','s','e'] from rfl) (show ('[' : Char) ≠ 'f' by decide),
+          parseInt_cons_eq_none '[' _ (by decide) (by decide),
+          parseString_cons_eq_none '[' _ (by decide),
+          show takePrefix ('[' :: (encArrBody xs ++ rest)) "[" = some (encArrBody xs ++ rest) from rfl]
+        exact parseArray_encode f xs hxs rest hfuel
     | obj kvs =>
       cases h with
       | obj kvs hvs _ =>
-        have hf := by simp [nodeCount_obj, nodeCountObj, nodeCount_ge_one]; omega
-        simp only [jcsEncodeChars, jcsEncodeChars_obj, takePrefix_append, Option.bind_eq_bind]
-        exact parseObject_encode fuel kvs hvs rest hf
+        rw [jcsEncodeChars_obj, List.cons_append]
+        simp only [parseValueFuel,
+          takePrefix_head_ne (show ("null").toList = 'n' :: ['u','l','l'] from rfl) (show ('{' : Char) ≠ 'n' by decide),
+          takePrefix_head_ne (show ("true").toList = 't' :: ['r','u','e'] from rfl) (show ('{' : Char) ≠ 't' by decide),
+          takePrefix_head_ne (show ("false").toList = 'f' :: ['a','l','s','e'] from rfl) (show ('{' : Char) ≠ 'f' by decide),
+          parseInt_cons_eq_none '{' _ (by decide) (by decide),
+          parseString_cons_eq_none '{' _ (by decide),
+          takePrefix_head_ne (show ("[").toList = '[' :: [] from rfl) (show ('{' : Char) ≠ '[' by decide),
+          show takePrefix ('{' :: (encObjBody kvs ++ rest)) "{" = some (encObjBody kvs ++ rest) from rfl]
+        exact parseObject_encode f kvs hvs rest hfuel
 
   theorem parseArray_encode (fuel : Nat) (xs : List OmegaJson) (hx : ∀ x ∈ xs, x.WF) (rest : List Char)
       (hfuel : nodeCount (OmegaJson.arr xs) < fuel + 1) :
