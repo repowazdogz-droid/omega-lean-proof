@@ -10,12 +10,14 @@ This is **doctrine-layer scaffolding** — Lean proves statements about
 `docs/ASSURANCE_BOUNDARY.md` and `failure-protocol.md`).
 
 ## STATUS
-Live. Toolchain pinned `leanprover/lean4:v4.27.0`. All seven shipped Lake
-roots build cleanly with **zero `sorry`** in shipped modules. SafeVerify
-(@ Lean v4.27.0) replay **pass** as of 2026-05-19. `OmegaV15.lean` (parallel
-v1.5) is **not** in Lake roots and still has one open `sorry`. HEAD
-`743187a` ("docs: clarify doctrine scope and operational assurance
-boundaries").
+Live. Toolchain pinned `leanprover/lean4:v4.27.0`. All **eight** shipped Lake
+roots build cleanly with **zero `sorry`** in shipped modules (the eighth,
+`OmegaJCSChain`, is the chain↔JCS bridge over the conformance-tested
+`OmegaJCS` encoder; promoted PIN3, 2026-06-10). SafeVerify (@ Lean v4.27.0)
+replay **pass** on `OmegaProof`/`OmegaV14`/`OmegaP3Semantic`/`OmegaJCSChain`
+as of 2026-06-10. `OmegaV15.lean` (parallel 29-conjunct doctrine) is **not**
+in Lake roots and still has one open `sorry`. HEAD `61d3c9d` ("feat(jcs):
+chain-JCS bridge … OmegaJCS promoted to attested roots (eight)").
 
 ## STACK
 - Lean 4 v4.27.0 (`lean-toolchain` pinned).
