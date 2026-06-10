@@ -16,7 +16,7 @@ package omegaProof
 @[default_target]
 lean_lib OmegaProof where
   srcDir := "."
-  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol, `OmegaHashChain, `OmegaGovernance, `OmegaJCSChain]
+  roots := #[`OmegaProof, `OmegaV14, `OmegaP3Semantic, `OmegaP1Governance, `FailureProtocol, `OmegaHashChain, `OmegaGovernance, `OmegaJCSChain, `OmegaP5Gate]
 
 lean_lib OmegaJCS where
   srcDir := "."
