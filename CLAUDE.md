@@ -91,5 +91,16 @@ chain-JCS bridge … OmegaJCS promoted to attested roots (eight)").
   behaviour. See `docs/ASSURANCE_BOUNDARY.md` before writing assurance
   claims.
 
+## Session rules
+1. **Account for the working tree at session start.** Run `git status` and
+   explain every modification and untracked file against a known author/task.
+   If any change has no known author, STOP and ask before building on top of it.
+2. **Do not add Lake roots or touch `lakefile.lean` outside an explicitly
+   scoped task.** A new attested root changes the public surface; it needs its
+   own review. (This rule was added after `OmegaP5Gate` appeared on `main`'s
+   roots from an unscoped parallel session; it now lives on branch `wip/p5gate`.)
+3. **`lake build` from a clean tree before claiming any gate.** "It builds" and
+   "the gate passes" are only true after a from-clean build, not an incremental one.
+
 ## LAST UPDATED
-2026-05-26
+2026-06-10 (session-hygiene rules added; OmegaP5Gate moved off main to wip/p5gate)
