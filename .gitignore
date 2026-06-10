@@ -6,3 +6,7 @@
 *.hash
 *.trace
 *.lock
+
+# safety-net: build log
+build.log
+*.log
