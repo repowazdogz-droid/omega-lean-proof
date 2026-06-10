@@ -62,47 +62,61 @@ def intToString (n : Int) : String :=
   String.ofList (intToStringChars n)
 
 mutual
-  def encObjPairChars (kv : String × OmegaJson) : List Char :=
-    jcsEscapeStringChars kv.1 ++ ':' :: jcsEncodeChars kv.2
-
-  def jcsEncodeChars : OmegaJson → List Char
-    | .null => "null".toList
-    | .bool true => "true".toList
-    | .bool false => "false".toList
-    | .int n => intToStringChars n
-    | .str s => jcsEscapeStringChars s
-    | .arr xs => '[' :: encArrBody xs
-    | .obj kvs => '{' :: encObjBody kvs
-
-  def encArrSuffix (xs : List OmegaJson) : List Char :=
-    match xs with
-    | [] => [']']
-    | v :: vs => ',' :: jcsEncodeChars v ++ encArrSuffix vs
-
-  def encArrBody (xs : List OmegaJson) : List Char :=
-    match xs with
-    | [] => [']']
-    | v :: vs => jcsEncodeChars v ++ encArrSuffix vs
-
-  def encObjSuffix (kvs : List (String × OmegaJson)) : List Char :=
-    match kvs with
-    | [] => ['}']
-    | kv :: kvs' => ',' :: encObjPairChars kv ++ encObjSuffix kvs'
-
-  def encObjBody (kvs : List (String × OmegaJson)) : List Char :=
-    match kvs with
-    | [] => ['}']
-    | kv :: kvs' => encObjPairChars kv ++ encObjSuffix kvs'
+  partial def jcsEncode : OmegaJson → String
+    | .null => "null"
+    | .bool true => "true"
+    | .bool false => "false"
+    | .int n => intToString n
+    | .str s => jcsEscapeString s
+    | .arr xs =>
+        "[" ++ String.intercalate "," (xs.map jcsEncode) ++ "]"
+    | .obj kvs =>
+        "{" ++ String.intercalate "," (kvs.map fun ⟨k, v⟩ =>
+          jcsEscapeString k ++ ":" ++ jcsEncode v) ++ "}"
 end
 
-partial def jcsEncode (v : OmegaJson) : String :=
-  String.ofList (jcsEncodeChars v)
+def jcsEncodeChars (v : OmegaJson) : List Char :=
+  (jcsEncode v).toList
+
+def encArrSuffix (xs : List OmegaJson) : List Char :=
+  match xs with
+  | [] => [']']
+  | v :: vs => ',' :: jcsEncodeChars v ++ encArrSuffix vs
+
+def encArrBody (xs : List OmegaJson) : List Char :=
+  match xs with
+  | [] => [']']
+  | v :: vs => jcsEncodeChars v ++ encArrSuffix vs
+
+def encObjPairChars (kv : String × OmegaJson) : List Char :=
+  jcsEscapeStringChars kv.1 ++ ':' :: jcsEncodeChars kv.2
+
+def encObjSuffix (kvs : List (String × OmegaJson)) : List Char :=
+  match kvs with
+  | [] => ['}']
+  | kv :: kvs' => ',' :: encObjPairChars kv ++ encObjSuffix kvs'
+
+def encObjBody (kvs : List (String × OmegaJson)) : List Char :=
+  match kvs with
+  | [] => ['}']
+  | kv :: kvs' => encObjPairChars kv ++ encObjSuffix kvs'
 
 def canonicalBytesJCS (v : OmegaJson) : ByteArray :=
   (jcsEncode v).toUTF8
 
 theorem jcsEncode_toList (v : OmegaJson) :
-    (jcsEncode v).toList = jcsEncodeChars v := by
-  simp [jcsEncode, jcsEncodeChars, String.toList_ofList]
+    (jcsEncode v).toList = jcsEncodeChars v := rfl
+
+@[simp] theorem jcsEncodeChars_null : jcsEncodeChars OmegaJson.null = "null".toList := rfl
+
+@[simp] theorem jcsEncodeChars_bool (b : Bool) :
+    jcsEncodeChars (OmegaJson.bool b) = (if b then "true" else "false").toList := by
+  cases b <;> rfl
+
+@[simp] theorem jcsEncodeChars_int (n : Int) :
+    jcsEncodeChars (OmegaJson.int n) = intToStringChars n := rfl
+
+@[simp] theorem jcsEncodeChars_str (s : String) :
+    jcsEncodeChars (OmegaJson.str s) = jcsEscapeStringChars s := rfl
 
 end OmegaJCS

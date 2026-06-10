@@ -601,14 +601,71 @@ theorem intToStringChars_head (n : Int) :
     refine ⟨'-', natToDecimal (m + 1), ?_, by decide, by decide, by decide⟩
     unfold intToStringChars; rw [if_pos (Int.negSucc_lt_zero m)]; rfl
 
+theorem isDigit_ne_bracket {c : Char} (h : isDigit c = true) : c ≠ ']' ∧ c ≠ '}' := by
+  refine ⟨?_, ?_⟩ <;> (rintro rfl; exact absurd h (by decide))
+
+/-- The first byte of any value encoding is never `]` or `}` (so the array/object
+    parsers take their value branch rather than closing early). -/
+theorem jcsEncodeChars_head (v : OmegaJson) :
+    ∃ c t, jcsEncodeChars v = c :: t ∧ c ≠ ']' ∧ c ≠ '}' := by
+  cases v with
+  | null => exact ⟨'n', _, rfl, by decide, by decide⟩
+  | bool b => cases b <;> exact ⟨_, _, rfl, by decide, by decide⟩
+  | int n =>
+    cases n with
+    | ofNat m =>
+      obtain ⟨d, t', hd, hdig⟩ := natToDecimal_head m
+      refine ⟨d, t', ?_, (isDigit_ne_bracket hdig).1, (isDigit_ne_bracket hdig).2⟩
+      rw [show jcsEncodeChars (OmegaJson.int (Int.ofNat m)) = intToStringChars (Int.ofNat m) from rfl]
+      unfold intToStringChars; simp [hd]
+    | negSucc m =>
+      refine ⟨'-', natToDecimal (m + 1), ?_, by decide, by decide⟩
+      rw [show jcsEncodeChars (OmegaJson.int (Int.negSucc m)) = intToStringChars (Int.negSucc m) from rfl]
+      unfold intToStringChars; rw [if_pos (Int.negSucc_lt_zero m)]; rfl
+  | str s => exact ⟨'"', _, by rw [show jcsEncodeChars (OmegaJson.str s) = jcsEscapeStringChars s from rfl,
+      jcsEscapeStringChars_spec, List.cons_append], by decide, by decide⟩
+  | arr xs => exact ⟨'[', _, by rw [jcsEncodeChars_arr], by decide, by decide⟩
+  | obj kvs => exact ⟨'{', _, by rw [jcsEncodeChars_obj], by decide, by decide⟩
+
+theorem jcsEscapeStringChars_head (s : String) :
+    ∃ t, jcsEscapeStringChars s = '"' :: t ∧ 1 ≤ t.length := by
+  refine ⟨escapeStringChars s.toList ++ ['"'], ?_, ?_⟩
+  · rw [jcsEscapeStringChars_spec, List.cons_append]
+  · simp
+
+theorem paf_val (f : Nat) (c : Char) (s : List Char) (acc : List OmegaJson) (hc : c ≠ ']') :
+    parseArrayFuel (f + 1) (c :: s) acc =
+      (match parseValueFuel f (c :: s) with
+       | some (v, rest') => (match rest' with
+           | ',' :: rest'' => parseArrayFuel f rest'' (v :: acc)
+           | ']' :: rest'' => some (OmegaJson.arr (v :: acc).reverse, rest'')
+           | _ => none)
+       | none => none) := by
+  rw [parseArrayFuel]
+  · rfl
+  · intro rest heq; injection heq with h1 _; exact hc h1
+
+theorem pof_val (f : Nat) (c : Char) (s : List Char) (acc : List (String × OmegaJson)) (hc : c ≠ '}') :
+    parseObjectFuel (f + 1) (c :: s) acc =
+      (match parseObjectPairFuel f (c :: s) with
+       | some (k, v, rest') => (match rest' with
+           | ',' :: rest'' => parseObjectFuel f rest'' ((k, v) :: acc)
+           | '}' :: rest'' => some (OmegaJson.obj ((k, v) :: acc).reverse, rest'')
+           | _ => none)
+       | none => none) := by
+  rw [parseObjectFuel]
+  · rfl
+  · intro rest heq; injection heq with h1 _; exact hc h1
+
 mutual
   theorem parse_encode (v : OmegaJson) (h : v.WF) :
       ∀ (fuel : Nat) (rest : List Char),
         NoLeadDigit rest →
-        nodeCount v < fuel →
+        (jcsEncodeChars v).length < fuel →
         parseValueFuel fuel (jcsEncodeChars v ++ rest) = some (v, rest) := by
     intro fuel rest hrest hfuel
-    have h1 := nodeCount_ge_one v
+    have h1 : 1 ≤ (jcsEncodeChars v).length := by
+      obtain ⟨c, t, hc, _, _⟩ := jcsEncodeChars_head v; rw [hc]; simp
     obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
     cases v with
     | null =>
@@ -657,7 +714,9 @@ mutual
           parseInt_cons_eq_none '[' _ (by decide) (by decide),
           parseString_cons_eq_none '[' _ (by decide),
           show takePrefix ('[' :: (encArrBody xs ++ rest)) "[" = some (encArrBody xs ++ rest) from rfl]
-        exact parseArray_encode f xs hxs rest hfuel
+        have hb : (encArrBody xs).length < f := by
+          have := hfuel; rw [jcsEncodeChars_arr, List.length_cons] at this; omega
+        simpa using arrBody xs f [] rest hxs hb
     | obj kvs =>
       cases h with
       | obj kvs hvs _ =>
@@ -670,65 +729,116 @@ mutual
           parseString_cons_eq_none '{' _ (by decide),
           takePrefix_head_ne (show ("[").toList = '[' :: [] from rfl) (show ('{' : Char) ≠ '[' by decide),
           show takePrefix ('{' :: (encObjBody kvs ++ rest)) "{" = some (encObjBody kvs ++ rest) from rfl]
-        exact parseObject_encode f kvs hvs rest hfuel
+        have hb : (encObjBody kvs).length < f := by
+          have := hfuel; rw [jcsEncodeChars_obj, List.length_cons] at this; omega
+        simpa using objBody kvs f [] rest hvs hb
+  termination_by sizeOf v
 
-  theorem parseArray_encode (fuel : Nat) (xs : List OmegaJson) (hx : ∀ x ∈ xs, x.WF) (rest : List Char)
-      (hfuel : nodeCount (OmegaJson.arr xs) < fuel + 1) :
-      parseArrayFuel fuel (encArrBody xs ++ rest) [] = some (OmegaJson.arr xs, rest) := by
-    induction xs generalizing fuel rest with
-    | nil =>
-      simp only [encArrBody, parseArrayFuel, nodeCount_arr, List.sum_nil, Nat.add_one, Nat.add_zero]
-      rfl
-    | cons v xs ih =>
-      have hbody := encArrBody_cons v xs
-      have hnc_v : nodeCount v < nodeCount (OmegaJson.arr (v :: xs)) := nodeCount_lt_arr_cons v xs
-      have hnc_arr : nodeCount (OmegaJson.arr xs) < fuel := by
-        simp [nodeCount_arr, nodeCountList, List.sum_cons] at hfuel ⊢
-        omega
-      have hv := parse_encode v (hx v (by simp)) fuel (encArrSuffix xs ++ rest) hnc_v
-      rw [hbody, List.append_assoc]
-      cases xs with
+  theorem arrBody (xs : List OmegaJson) (fuel : Nat) (acc : List OmegaJson) (rest : List Char)
+      (hx : ∀ x ∈ xs, x.WF) (hfuel : (encArrBody xs).length < fuel) :
+      parseArrayFuel fuel (encArrBody xs ++ rest) acc
+        = some (OmegaJson.arr (acc.reverse ++ xs), rest) := by
+    match xs, hx, hfuel with
+    | [], _, hfuel =>
+      rw [show encArrBody ([] : List OmegaJson) = [']'] from rfl] at hfuel ⊢
+      obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp at hfuel; omega⟩
+      simp only [List.cons_append, List.nil_append, parseArrayFuel, List.append_nil]
+    | v :: vs, hx, hfuel =>
+      obtain ⟨c, t, hc, hcne, _⟩ := jcsEncodeChars_head v
+      have hvpos : 1 ≤ (jcsEncodeChars v).length := by rw [hc]; simp
+      rw [encArrBody_cons, List.length_append] at hfuel
+      obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
+      have hes_pos : 1 ≤ (encArrSuffix vs).length := by
+        cases vs with
+        | nil => rw [show encArrSuffix ([] : List OmegaJson) = [']'] from rfl]; simp
+        | cons w ws => rw [encArrSuffix_cons]; simp
+      have hncv : (jcsEncodeChars v).length < f := by omega
+      have hnld : NoLeadDigit (encArrSuffix vs ++ rest) := by
+        cases vs with
+        | nil => rw [show encArrSuffix ([] : List OmegaJson) = [']'] from rfl]
+                 exact noLeadDigit_cons _ _ (by decide)
+        | cons w ws => rw [encArrSuffix_cons]; exact noLeadDigit_cons _ _ (by decide)
+      have hpv := parse_encode v (hx v (by simp)) f (encArrSuffix vs ++ rest) hnld hncv
+      rw [encArrBody_cons, List.append_assoc]
+      rw [hc, List.cons_append] at hpv ⊢
+      rw [paf_val f c (t ++ (encArrSuffix vs ++ rest)) acc hcne, hpv]
+      cases vs with
       | nil =>
-        simp only [encArrSuffix, hv, parseArrayFuel]
+        rw [show encArrSuffix ([] : List OmegaJson) = [']'] from rfl]
+        simp [List.reverse_cons, List.append_assoc]
       | cons w ws =>
-        have hstep := encArrSuffix_cons w ws
-        have hnc_w : nodeCount w < nodeCount (OmegaJson.arr (w :: ws)) := nodeCount_lt_arr_cons w ws
-        have hw := parse_encode w (hx w (by simp)) fuel (encArrSuffix ws ++ rest) hnc_w
-        have ih' := ih (fun x hx' => hx x (by simp [List.mem_cons] at hx'; cases hx' with | inl h => rw [h] | inr h => exact h)) fuel rest hnc_arr
-        simp only [hstep, hv, hw, ih', parseArrayFuel, List.append_assoc]
+        have hwf : ∀ x ∈ (w :: ws), x.WF := fun x hx' => hx x (List.mem_cons_of_mem v hx')
+        have hlen : (encArrBody (w :: ws)).length < f := by
+          have hf2 := hfuel
+          simp only [encArrSuffix_cons, List.length_append, List.length_cons] at hf2
+          simp only [encArrBody_cons, List.length_append]
+          omega
+        simp only [encArrSuffix_cons, List.cons_append]
+        rw [← encArrBody_cons, arrBody (w :: ws) f (v :: acc) rest hwf hlen]
+        simp [List.reverse_cons, List.append_assoc]
+  termination_by sizeOf xs
+  decreasing_by
+    all_goals simp_wf
+    all_goals try simp only [Prod.mk.sizeOf_spec, List.cons.sizeOf_spec]
+    all_goals omega
 
-  theorem parseObject_encode (fuel : Nat) (kvs : List (String × OmegaJson))
-      (hv : ∀ kv ∈ kvs, kv.2.WF) (rest : List Char)
-      (hfuel : nodeCount (OmegaJson.obj kvs) < fuel + 1) :
-      parseObjectFuel fuel (encObjBody kvs ++ rest) [] = some (OmegaJson.obj kvs, rest) := by
-    induction kvs generalizing fuel rest with
-    | nil =>
-      simp only [encObjBody, parseObjectFuel, nodeCount_obj, List.sum_nil, Nat.add_one, Nat.add_zero]
-      rfl
-    | cons kv kvs ih =>
-      have hbody := encObjBody_cons kv kvs
-      have hnc_v : nodeCount kv.2 < nodeCount (OmegaJson.obj (kv :: kvs)) :=
-        nodeCount_lt_obj_cons kv kvs
-      have hnc_obj : nodeCount (OmegaJson.obj kvs) < fuel := by
-        simp [nodeCount_obj, nodeCountObj, List.sum_cons] at hfuel ⊢
-        omega
-      have hk := parseString_jcsEscapeString kv.1
-        (':' :: jcsEncodeChars kv.2 ++ encObjSuffix kvs ++ rest)
-      have hv' := parse_encode kv.2 (hv kv (by simp)) fuel (encObjSuffix kvs ++ rest) hnc_v
-      rw [hbody, encObjPairChars, List.append_assoc]
-      cases kvs with
+  theorem objBody (kvs : List (String × OmegaJson)) (fuel : Nat)
+      (acc : List (String × OmegaJson)) (rest : List Char)
+      (hx : ∀ kv ∈ kvs, kv.2.WF) (hfuel : (encObjBody kvs).length < fuel) :
+      parseObjectFuel fuel (encObjBody kvs ++ rest) acc
+        = some (OmegaJson.obj (acc.reverse ++ kvs), rest) := by
+    match kvs, hx, hfuel with
+    | [], _, hfuel =>
+      rw [show encObjBody ([] : List (String × OmegaJson)) = ['}'] from rfl] at hfuel ⊢
+      obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by simp at hfuel; omega⟩
+      simp only [List.cons_append, List.nil_append, parseObjectFuel, List.append_nil]
+    | (k, v) :: kvs1, hx, hfuel =>
+      obtain ⟨tq, hq, htq⟩ := jcsEscapeStringChars_head k
+      have hpair_head : encObjPairChars (k, v) = '"' :: (tq ++ ':' :: jcsEncodeChars v) := by
+        rw [encObjPairChars, hq, List.cons_append]
+      have hppos : (jcsEncodeChars v).length + 3 ≤ (encObjPairChars (k, v)).length := by
+        rw [encObjPairChars, hq]; simp; omega
+      have hbody3 : 3 ≤ (encObjBody ((k, v) :: kvs1)).length := by
+        rw [encObjBody_cons, List.length_append]; omega
+      obtain ⟨g, rfl⟩ : ∃ g, fuel = g + 2 := ⟨fuel - 2, by omega⟩
+      rw [encObjBody_cons, List.length_append] at hfuel
+      have heos_pos : 1 ≤ (encObjSuffix kvs1).length := by
+        cases kvs1 with
+        | nil => rw [show encObjSuffix ([] : List (String × OmegaJson)) = ['}'] from rfl]; simp
+        | cons kw kws => rw [encObjSuffix_cons]; simp
+      have hncv : (jcsEncodeChars v).length < g := by omega
+      have hnld : NoLeadDigit (encObjSuffix kvs1 ++ rest) := by
+        cases kvs1 with
+        | nil => rw [show encObjSuffix ([] : List (String × OmegaJson)) = ['}'] from rfl]
+                 exact noLeadDigit_cons _ _ (by decide)
+        | cons kw kws => rw [encObjSuffix_cons]; exact noLeadDigit_cons _ _ (by decide)
+      have hpvv := parse_encode v (hx (k, v) (by simp)) g (encObjSuffix kvs1 ++ rest) hnld hncv
+      have hkey : '"' :: ((tq ++ ':' :: jcsEncodeChars v) ++ (encObjSuffix kvs1 ++ rest))
+          = jcsEscapeStringChars k ++ (':' :: jcsEncodeChars v ++ (encObjSuffix kvs1 ++ rest)) := by
+        rw [hq]; simp [List.cons_append, List.append_assoc]
+      rw [encObjBody_cons, List.append_assoc, hpair_head, List.cons_append,
+          show g + 2 = (g + 1) + 1 from rfl, pof_val (g + 1) '"' _ acc (by decide),
+          hkey, parseObjectPairFuel, parseString_jcsEscapeString]
+      simp only [List.cons_append, hpvv]
+      cases kvs1 with
       | nil =>
-        simp only [encObjSuffix, hk, hv', parseObjectFuel, parseObjectPairFuel]
-      | cons kv' kvs' =>
-        have hstep := encObjSuffix_cons kv' kvs'
-        have hnc_v' : nodeCount kv'.2 < nodeCount (OmegaJson.obj (kv' :: kvs')) :=
-          nodeCount_lt_obj_cons kv' kvs'
-        have hk' := parseString_jcsEscapeString kv'.1
-          (':' :: jcsEncodeChars kv'.2 ++ encObjSuffix kvs' ++ rest)
-        have hv'' := parse_encode kv'.2 (hv kv' (by simp)) fuel (encObjSuffix kvs' ++ rest) hnc_v'
-        have ih' := ih (fun kv hx' => hv kv (by simp [List.mem_cons] at hx'; cases hx' with | inl h => rw [h] | inr h => exact h)) fuel rest hnc_obj
-        simp only [hstep, hk, hv', hk', hv'', ih', parseObjectFuel, parseObjectPairFuel,
-          List.append_assoc]
+        rw [show encObjSuffix ([] : List (String × OmegaJson)) = ['}'] from rfl]
+        simp [List.reverse_cons, List.append_assoc]
+      | cons kw kws =>
+        have hwf : ∀ x ∈ (kw :: kws), x.2.WF := fun x hx' => hx x (List.mem_cons_of_mem (k, v) hx')
+        have hlen : (encObjBody (kw :: kws)).length < g + 1 := by
+          have hf2 := hfuel
+          simp only [encObjSuffix_cons, List.length_append, List.length_cons] at hf2
+          simp only [encObjBody_cons, List.length_append]
+          omega
+        simp only [encObjSuffix_cons, List.cons_append]
+        rw [← encObjBody_cons, objBody (kw :: kws) (g + 1) ((k, v) :: acc) rest hwf hlen]
+        simp [List.reverse_cons, List.append_assoc]
+  termination_by sizeOf kvs
+  decreasing_by
+    all_goals simp_wf
+    all_goals try simp only [Prod.mk.sizeOf_spec, List.cons.sizeOf_spec]
+    all_goals omega
 end
 
 end CompositeParse
