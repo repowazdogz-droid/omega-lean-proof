@@ -64,13 +64,18 @@
   ─────────────────────────────────────────────────────────────────────────────
   OPEN PROOFS — sorry count vs. deferred-but-not-sorry, both itemised
   ─────────────────────────────────────────────────────────────────────────────
-  Sorried in this file (1):
-    [O2] p6_no_coalition_escape  (line ~688)
-         — soundness of detectCoupling against coalition laundering; requires
-           concrete MemoryAccessLog/DeploymentGraph schema and a coupling-
-           witness rule. The corresponding STUB is [S5] detectCoupling, which
-           returns `[]` for now and forces the theorem to be unfalsifiable
-           against any concrete log/graph until the schema is fixed.
+  Sorried in this file (0):
+    [O2] p6_no_coalition_escape  — REPAIRED + PROVED 2026-06-11.
+         The original coupling hypothesis `(detectCoupling log graph).length > 0`
+         ranged over `log`/`graph` free of the boundary `b` and was false as
+         written (atomic-single-actor counterexample; preserved machine-checked in
+         `probes/O2Counterexample.lean`). The repaired statement ranges over the
+         `CouplingFinding` evidence and ties it to `b` via `h_atomic_single` (the
+         meaning of single-actor: the two coupling parties coincide). Proved
+         axiom-free, with `o2_repaired_non_vacuous` (hypotheses satisfiable) and
+         `o2_old_counterexample_excluded` (the old counterexample fails the new
+         hypotheses). detectCoupling remains STUB [S5] (`:= []`); the theorem is
+         stated over the finding type it is typed to produce, not the stub output.
 
   Deferred-but-not-sorry (4):
     [O1] drift_extraction_pure_parametric
@@ -695,19 +700,75 @@ variable (b : P6AgencyBoundary) (log : MemoryAccessLog) (graph : DeploymentGraph
 variable (binding : GovernanceRegimeBinding) (decision : DecisionInstant)
 variable (prevW currW : WindowDriftSummary) (bounds : DriftBounds)
 
-/-- [O2] Soundness of the P6 boundary against coalition laundering. Statement
-    shape: if `detectCoupling` finds a coupling, then any AgencyBoundary
-    accepting the action must satisfy either `mode_P6D` ∧ declared, or
-    `mode_P6C` ∧ closure. Proof requires concrete MemoryAccessLog and
-    DeploymentGraph schemas. -/
+/-- [O2, repaired 2026-06-11] No coalition escape — coupling tied to the boundary.
+
+    A `CouplingFinding f` is evidence that two agents are coupled
+    (`sharedMutableAccess` / `reciprocalDependency` / `explicitDelegation` /
+    `sharedIncentiveBinding`). `h_distinct` records that it is a genuine coupling
+    between two DIFFERENT agents. `h_atomic_single` is the meaning of
+    `mode_P6A_AtomicSingleActor`: under a single-actor boundary the two parties of
+    the coupling are necessarily the same agent (there is exactly one actor). A
+    real two-agent coupling therefore cannot be governed by a single-actor
+    boundary, and `P6_AgencyBoundary_Holds` collapses to declared delegation
+    (`mode_P6D` ∧ declared) or coupling closure (`mode_P6C` ∧ closure).
+
+    Forbids: two distinct agents acting as a coupled coalition under a boundary
+    that declares itself a single atomic actor — laundering a multi-agent coupling
+    through `mode_P6A` to dodge the declared-delegation / coupling-closure
+    requirements.
+
+    History: the original statement made the coupling hypothesis
+    `(detectCoupling log graph).length > 0` over `log`/`graph` free of `b`; it was
+    false as written (an atomic-single-actor `b` satisfies the premise while
+    violating the conclusion). The machine-checked refutation is preserved in
+    `probes/O2Counterexample.lean` (`o2_premise_too_weak`). `detectCoupling` is
+    STUB [S5] (`:= []`), so ranging over its (empty) output would be vacuous; the
+    repaired statement ranges over the `CouplingFinding` evidence the detector is
+    typed to produce. Non-vacuity is `o2_repaired_non_vacuous` below; the original
+    counterexample is shown incompatible with the new hypotheses in
+    `o2_old_counterexample_excluded`. -/
 theorem p6_no_coalition_escape
-    (h : (detectCoupling log graph).length > 0)
-    (h_b : P6_AgencyBoundary_Holds b) :
+    (f : CouplingFinding)
+    (h_distinct : f.agentA ≠ f.agentB)
+    (h_atomic_single : b.mode_P6A_AtomicSingleActor = true → f.agentA = f.agentB)
+    (h_holds : P6_AgencyBoundary_Holds b) :
     (b.mode_P6D_DelegatedOrCoalition = true ∧
      b.delegation_explicitly_declared = true) ∨
     (b.mode_P6C_CouplingClosure = true ∧
      b.coupling_closure_satisfied = true) := by
-  sorry  -- OPEN [O2]
+  rcases h_holds with hA | hDC
+  · -- single-actor: the coupling's parties coincide, contradicting distinctness
+    exact absurd (h_atomic_single hA) h_distinct
+  · exact hDC
+
+/-- Non-vacuity for the repaired [O2]: a genuine two-agent coupling under a
+    correctly-declared delegated boundary satisfies every hypothesis and the
+    conclusion, so the theorem is not true by empty hypothesis. -/
+theorem o2_repaired_non_vacuous :
+    ∃ (b : P6AgencyBoundary) (f : CouplingFinding),
+      f.agentA ≠ f.agentB ∧
+      (b.mode_P6A_AtomicSingleActor = true → f.agentA = f.agentB) ∧
+      P6_AgencyBoundary_Holds b ∧
+      ((b.mode_P6D_DelegatedOrCoalition = true ∧ b.delegation_explicitly_declared = true) ∨
+       (b.mode_P6C_CouplingClosure = true ∧ b.coupling_closure_satisfied = true)) := by
+  refine ⟨⟨false, true, true, false, false⟩,
+          ⟨CouplingMode.explicitDelegation, "alice", "bob"⟩, ?_, ?_, ?_, ?_⟩
+  · decide
+  · intro h; exact absurd h (by decide)
+  · exact Or.inr (Or.inl ⟨rfl, rfl⟩)
+  · exact Or.inl ⟨rfl, rfl⟩
+
+/-- Adversarial check: the original counterexample (an atomic-single-actor
+    boundary) is incompatible with the repaired hypotheses for any genuine
+    distinct-agent coupling — `h_atomic_single` cannot hold there. So the repair
+    excludes the very execution that falsified the original statement, for the
+    principled reason that single-actor mode denies a two-agent coupling. -/
+theorem o2_old_counterexample_excluded
+    (f : CouplingFinding) (h_distinct : f.agentA ≠ f.agentB)
+    (hA : b.mode_P6A_AtomicSingleActor = true) :
+    ¬ (b.mode_P6A_AtomicSingleActor = true → f.agentA = f.agentB) := by
+  intro h_atomic_single
+  exact h_distinct (h_atomic_single hA)
 
 /-- [O3] Window-laundering closure. Sliding 64-record windows cannot hide
     cumulative drift in the gap between windows. Requires concrete window
