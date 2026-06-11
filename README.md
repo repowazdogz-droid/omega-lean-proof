@@ -7,6 +7,56 @@ Public [Lake](https://github.com/leanprover/lean4) package for the **OMEGA Proto
 
 Licensed under the [MIT License](./LICENSE).
 
+## Verification status (2026-06-12)
+
+Current machine-checked status. This supersedes the dated receipts further down (which reference the earlier `v4.18.0` pin and a since-removed axiom). Every claim has a command — run the command rather than trust the prose.
+
+**Toolchain.** Lean 4 `v4.27.0`, pinned in [`lean-toolchain`](./lean-toolchain). No external Lake dependencies; no Mathlib (no `import Mathlib` in any shipped module).
+
+```bash
+cat lean-toolchain              # leanprover/lean4:v4.27.0
+grep -c require lakefile.lean   # 0
+```
+
+**Build.** Green, 15 jobs.
+
+```bash
+lake build                      # Build completed successfully (15 jobs)
+```
+
+**`sorry` in shipped code: 0.** No shipped Lake root contains a proof-term `sorry`. The only real `sorry` left in the repo is one `OPEN` marker in the non-root `OmegaV15.lean` draft (see Known open items); a clean `lake build` emits no `uses 'sorry'` warning.
+
+```bash
+lake build 2>&1 | grep -c "uses 'sorry'"   # 0
+```
+
+**Axioms: zero user-declared axioms.** No `axiom` is declared in any shipped root. One `opaque` declaration, `compute_hash` (a SHA-256 placeholder, uninterpreted — not an axiom), is the only uninterpreted constant. The cryptographic assumption behind tamper-evidence (hash injectivity / collision resistance) is carried as an **explicit theorem hypothesis** (`hash_cr`), discharged at each call site, rather than as a global axiom; the axiom-free constructive core is `tamper_implies_collision`. Every shipped theorem depends only on Lean's standard built-ins `propext`, `Classical.choice`, `Quot.sound`.
+
+```bash
+grep -rn '^[[:space:]]*axiom ' *.lean OmegaJCS/*.lean   # (no output: zero axioms)
+cat > /tmp/ax.lean <<'EOF'
+import OmegaJCS.Roundtrip
+import OmegaP3Semantic
+#print axioms OmegaJCS.decode_encode             -- [propext, Classical.choice, Quot.sound]
+#print axioms OmegaJCS.jcsEncode_injective       -- [propext, Classical.choice, Quot.sound]
+#print axioms OmegaP3Semantic.tamper_detection   -- [propext, Classical.choice, Quot.sound]
+#print axioms OmegaP3Semantic.tamper_implies_collision
+EOF
+lake env lean /tmp/ax.lean
+```
+
+**Key theorems.**
+
+| Theorem | File | What is proven |
+|---|---|---|
+| `OmegaJCS.decode_encode` | [`OmegaJCS/Roundtrip.lean`](./OmegaJCS/Roundtrip.lean) | Decoding the canonical (JCS) encoding of a well-formed JSON value returns it: `jcsDecode (jcsEncode v) = some v`. |
+| `OmegaJCS.jcsEncode_injective` | [`OmegaJCS/Roundtrip.lean`](./OmegaJCS/Roundtrip.lean) | Distinct well-formed JSON values have distinct canonical encodings. |
+| `OmegaP3Semantic.tamper_implies_collision` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Altering a payload in a hash-linked record chain forces a `compute_hash` collision (axiom-free). |
+| `OmegaP3Semantic.tamper_detection` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Under an explicit hash-injectivity hypothesis, a tampered chain cannot satisfy `P3_Traceability`. |
+| `OmegaHashChain.omega_chain_append_only` | [`OmegaHashChain.lean`](./OmegaHashChain.lean) | Appending a well-formed record at the tip leaves all prior entries unchanged. |
+
+**Known open items.** `OmegaV15.lean` is a parallel v1.5 draft, **not** a Lake root. It carries one `OPEN [O2]` obligation, `p6_no_coalition_escape`, which is **false as written**: the premise `P6_AgencyBoundary_Holds` admits the atomic-single-actor mode that the conclusion excludes, and the coupling hypothesis ranges over variables independent of the boundary. The refutation is machine-checked in [`probes/O2Counterexample.lean`](./probes/O2Counterexample.lean) (`o2_premise_too_weak`, axiom-free); a corrected statement is future work. Development scratch probes were archived to `archived/lean-proof-scratch-2026-06-12.tar.zst` and removed from the tree.
+
 ## What is formalised?
 
 `Governed` is a right-nested conjunction of **seventeen** independent `Prop` atoms:
