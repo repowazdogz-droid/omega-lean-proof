@@ -233,3 +233,37 @@ Notes: the encoder-conformance step additionally needs `npm install` (it shells
 out to `canonicalize@3.0.0`). SafeVerify replay needs SafeVerify built under
 `.cache/SafeVerify/` (gitignored; pinned to Lean v4.27.0) — its verbatim output
 is the attestation file in [E8].
+
+---
+
+## [E11] Proof-integrity loop — per-theorem axiom allowlist + sealed replaying report
+
+*Appended 2026-06-13.* The loop at `~/Omega/proof-integrity-loop/` runs
+`#print axioms` for every watched theorem and checks that the observed axiom set
+is a subset of that theorem's declared allowlist in
+`proof_integrity.config.json`; any new axiom, `sorryAx`, `native_decide`, or
+renamed/missing theorem fails the run. It writes
+`proof_integrity_report.{json,md}` and a LOCAL seal
+(`proof_integrity_report.seal.json`). Latest run against merged `lean-proof`
+`main`: **OVERALL PASS**, seal id **`LOCAL-20260612-213517-78A768`**; the report
+SHA-256 recorded in the seal recomputes to the same value (the report replays).
+The sixteen theorems added since the writeup was drafted are watched here: ten
+for the P5 decision gate (`OmegaP5Gate.*` — 8×`[propext]`, 2×`[propext,
+Quot.sound]`) and six for generation provenance (`OmegaProvenance.*` —
+4×`[propext]`, 2×`[]`), each observed at its allowlist.
+
+## [E12] The decision gate's no-false-COMMIT theorem, and the composition-fixture reconciliation
+
+*Appended 2026-06-13.* **Gate.** The deterministic P5 gate (`OmegaP5Gate.lean`,
+R1–R22) landed on `lean-proof` `main` at `36bd522` and is current at `c30c583`.
+It includes `no_false_commit` — a record any firing rule rejects can never carry
+`gate_result = COMMITTED` — kernel-verified with no user axioms (axiom set
+`[propext]`; see [E11]). **Fixture.** The `@omega-protocol/contracts` composition
+test vector recorded `outcome.gate_result: COMMITTED` while its ethics slot
+carried `requires_human_review = 1`, which the shipped evaluator resolves to
+ESCALATED (rule R2). It was reconciled in public at commit **`7b3eb31`**: outcome
+→ `ESCALATED` / `acted: false`, content hash
+**`152eab926412e397…c3d2c705` → `ad7bfe01539227…5925dcf0`**, and the
+gate-evaluator "known counterexample" test flipped to assert consistency. A
+different artifact from the writeup's Lean axiom; the same rule — when the proofs
+and the claims disagree, the claims move.
