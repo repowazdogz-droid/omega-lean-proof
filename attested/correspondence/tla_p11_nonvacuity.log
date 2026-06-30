@@ -1,0 +1,37 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 105 and seed -184303069342508694 with 1 worker on 16 cores with 12288MB heap and 64MB offheap memory [pid: 35673] (Mac OS X 15.7.3 aarch64, Homebrew 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/warre/Omega/p11-update-integrity-tla/P11UpdateIntegrity.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Integers.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Sequences.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module P11UpdateIntegrity
+Starting... (2026-06-30 07:57:27)
+Computing initial states...
+Computed 2 initial states...
+Finished computing initial states: 3 distinct states generated at 2026-06-30 07:57:27.
+Error: Invariant NoValidUpdate is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ nUpdates = 0
+/\ originalInChain = TRUE
+/\ current = 0
+/\ chain = <<0>>
+/\ allConforming = TRUE
+/\ priorValue = 0
+
+State 2: <RepairedUpdate line 103, col 5 to line 115, col 35 of module P11UpdateIntegrity>
+/\ nUpdates = 1
+/\ originalInChain = TRUE
+/\ current = 0
+/\ chain = <<0, 0>>
+/\ allConforming = TRUE
+/\ priorValue = 0
+
+4 states generated, 4 distinct states found, 2 states left on queue.
+The depth of the complete state graph search is 2.
+Finished in 00s at (2026-06-30 07:57:27)

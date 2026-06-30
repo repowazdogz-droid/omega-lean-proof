@@ -1,0 +1,9 @@
+P10 (Competence Attestation) -- Z3/SMT binding
+============================================================
+WITNESS  (weak gate admits under-competent):   sat  (expect sat)
+         counterexample: [admit = True, competence = 1, cls = 3]
+REPAIR   (gate blocks admit & under-competent): unsat  (expect unsat)
+NONVAC   (competent agent admissible):          sat  (expect sat)
+         model: [admit = True, competence = 3, cls = 3]
+============================================================
+ALL THREE AS EXPECTED: True

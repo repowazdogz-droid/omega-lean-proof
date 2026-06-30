@@ -1,0 +1,31 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 80 and seed 8967037070505167054 with 1 worker on 16 cores with 12288MB heap and 64MB offheap memory [pid: 35702] (Mac OS X 15.7.3 aarch64, Homebrew 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/warre/Omega/p1-freshness-tla/P1Freshness.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Integers.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module P1Freshness
+Starting... (2026-06-30 07:57:29)
+Computing initial states...
+Computed 2 initial states...
+Computed 4 initial states...
+Computed 8 initial states...
+Computed 16 initial states...
+Computed 32 initial states...
+Computed 64 initial states...
+Computed 128 initial states...
+Computed 256 initial states...
+Finished computing initial states: 301 distinct states generated at 2026-06-30 07:57:29.
+Progress(287) at 2026-06-30 07:57:32: 2,444,980 states generated (2,444,980 s/min), 2,422,678 distinct states found (2,422,678 ds/min), 18,900 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 3.8E-9
+  based on the actual fingerprints:  val = 8.2E-11
+2757327 states generated, 2731676 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 302.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 1).
+Finished in 03s at (2026-06-30 07:57:32)

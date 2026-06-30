@@ -1,0 +1,56 @@
+Doing expand get, insert and prove unique annotations... No change.
+Doing simplify (non-expanded game)... No change.
+Doing expand... Applied collision k_2 <-R hashkey; forall x1, y1: content, x2, y2: hashval; return((H(k_2, x1, x2) = H(k_2, y1, y2))) <=(Phash(time))=> return(((x1 = y1) && (x2 = y2))) with k_2 -> k_1 Probability: Phash(time + time(game 1))
+Done.
+Doing remove assignments of findcond... No change.
+Doing simplify... Run simplify 1 time(s). Fixpoint reached.
+No change.
+Doing move all binders... No change.
+Doing SA rename new without array accesses and remove assignments of findcond... No change.
+Doing merge branches... No change.
+Proved query forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false
+===================== Proof starts =======================
+Initial state
+Game 1 is
+     cstart() :=
+     k_1 <-R hashkey;
+     return();
+     ((
+       foreach i <= N do
+       cVer(c1: content, c2: content, hprev: hashval) :=
+  {7}  if H(k_1, c2, hprev) = H(k_1, c1, h0) then
+ {20}  if (c2 <> c1) || (hprev <> h0) then
+       event tamperAccepted(c1, c2, hprev);
+       return()
+     ) | (
+       ch1() :=
+       return(k_1)
+     ))
+
+
+Applying expand [probability Phash(time_1)]
+  - Expand if/find/let
+    - Test at 20 always false
+    - Merge branches of test at 7
+yields
+
+Game 2 is
+     cstart() :=
+     k_1 <-R hashkey;
+     return();
+     ((
+       foreach i <= N do
+       cVer(c1: content, c2: content, hprev: hashval) :=
+       yield
+     ) | (
+       ch1() :=
+       return(k_1)
+     ))
+
+
+Proved forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false in game 2
+Adv[Game 1: forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false] <= Phash(time_1) + Adv[Game 2: forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false]
+Adv[Game 2: forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false] <= 0
+RESULT Proved forall hprev: hashval, c2, c1: content; event(tamperAccepted(c1, c2, hprev)) ==> false up to probability Phash(time_1)
+RESULT time_1 = time + time(game 1) = time + 2 * N * time(H) + N * time(([1,N]))
+All queries proved.

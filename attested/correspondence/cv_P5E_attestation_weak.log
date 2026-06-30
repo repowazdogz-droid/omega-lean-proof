@@ -1,0 +1,215 @@
+File "P5E_attestation_weak.cv", line 42, characters 41-42:
+Warning: Replication uses the same parameter N with channel cExe as replication at line 42, characters 14-15 with channel cApp. Avoid reusing parameters for multiple replications with different channels to avoid losing precision in the probability bound.
+Doing expand get, insert and prove unique annotations... No change.
+Doing simplify (non-expanded game)... No change.
+Doing expand... Done.
+Doing remove assignments of findcond... Done.
+Doing simplify... Run simplify 1 time(s). Fixpoint reached.
+No change.
+Doing move all binders... No change.
+Doing SA rename new without array accesses and remove assignments of findcond... No change.
+Doing merge branches... No change.
+Proof of forall m: payload; event(executed(m)) ==> event(approved(m)) failed:
+  Found executed(m_3) at 34
+  but could not prove event(approved(m))
+Trying equivalence uf_cma(sign)... Failed.
+Doing remove assignments of binder pkA... Done.
+Doing remove assignments of binder skA... Done.
+Trying equivalence uf_cma(sign) with r, rk... Transf. OK Proba. computed Transf. done Succeeded.
+Doing simplify (non-expanded game)... No change.
+Doing expand... Done.
+Doing remove assignments of findcond... Done.
+Doing simplify... Run simplify 1 time(s). Fixpoint reached.
+No change.
+Doing move all binders... No change.
+Doing SA rename new without array accesses and remove assignments of findcond... No change.
+Doing merge branches... No change.
+Proof of forall m: payload; event(executed(m)) ==> event(approved(m)) failed:
+  Found executed(m_3) at 30
+  but could not prove event(approved(m))
+Trying equivalence uf_cma(sign)... Failed.
+===================== Proof starts =======================
+Initial state
+Game 1 is
+     cstart() :=
+     rk <-R keyseed;
+     pkA: pkey <- spkgen(rk);
+     skA: skey <- sskgen(rk);
+     return(pkA);
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       return(m_2, (m_1: payload <- m_2; sk: skey <- skA; r <-R sign_seed; sign_r(m_1, sk, r)))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying expand
+  - Expand if/find/let
+yields
+
+Game 2 is
+     cstart() :=
+     rk <-R keyseed;
+     pkA: pkey <- spkgen(rk);
+     skA: skey <- sskgen(rk);
+     return(pkA);
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       m_1: payload <- m_2;
+       sk: skey <- skA;
+       r <-R sign_seed;
+       return(m_2, sign_r(m_1, sk, r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying remove assignments of findcond
+  - Remove assignments on m_1 (definition removed, all usages removed)
+  - Remove assignments on sk (definition removed, all usages removed)
+yields
+
+Game 3 is
+     cstart() :=
+     rk <-R keyseed;
+     pkA: pkey <- spkgen(rk);
+     skA: skey <- sskgen(rk);
+     return(pkA);
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       return(m_2, sign_r(m_2, skA, r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying remove assignments of binder pkA
+  - Remove assignments on pkA (definition removed, all usages removed)
+yields
+
+Game 4 is
+     cstart() :=
+     rk <-R keyseed;
+     skA: skey <- sskgen(rk);
+     return(spkgen(rk));
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       return(m_2, sign_r(m_2, skA, r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying remove assignments of binder skA
+  - Remove assignments on skA (definition removed, all usages removed)
+yields
+
+Game 5 is
+     cstart() :=
+     rk <-R keyseed;
+     return(spkgen(rk));
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       return(m_2, sign_r(m_2, sskgen(rk), r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying equivalence uf_cma(sign) with r, rk [probability Psign(time_1, N)]
+  - Equivalence uf_cma(sign) with variables: rk -> r_1, r -> r2
+yields
+
+Game 6 is
+     cstart() :=
+     rk <-R keyseed;
+     return(pkgen2(rk));
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       return(m_2, (x: payload <- m_2; sign_r2(x, skgen2(rk), r)))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying expand
+  - Expand if/find/let
+yields
+
+Game 7 is
+     cstart() :=
+     rk <-R keyseed;
+     return(pkgen2(rk));
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       x: payload <- m_2;
+       return(m_2, sign_r2(x, skgen2(rk), r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+
+Applying remove assignments of findcond
+  - Remove assignments on x (definition removed, all usages removed)
+yields
+
+Game 8 is
+     cstart() :=
+     rk <-R keyseed;
+     return(pkgen2(rk));
+     ((
+       foreach i <= N do
+       cApp(m_2: payload) :=
+       event approved(m_2);
+       r <-R sign_seed;
+       return(m_2, sign_r2(m_2, skgen2(rk), r))
+     ) | (
+       foreach j <= N do
+       cExe(m_3: payload) :=
+       event executed(m_3);
+       return()
+     ))
+
+RESULT time_1 = 2 * N * time(([1,N])) + time + -1 * time(check)
+RESULT Could not prove forall m: payload; event(executed(m)) ==> event(approved(m)).

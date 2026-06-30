@@ -1,0 +1,24 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 85 and seed 8834034885792504956 with 1 worker on 16 cores with 12288MB heap and 64MB offheap memory [pid: 35661] (Mac OS X 15.7.3 aarch64, Homebrew 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/warre/Omega/p11-update-integrity-tla/P11UpdateIntegrity.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Integers.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Sequences.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module P11UpdateIntegrity
+Starting... (2026-06-30 07:57:26)
+Computing initial states...
+Computed 2 initial states...
+Finished computing initial states: 3 distinct states generated at 2026-06-30 07:57:26.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 7.6E-16
+237 states generated, 120 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 4.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 3 and the 95th percentile is 3).
+Finished in 00s at (2026-06-30 07:57:26)
