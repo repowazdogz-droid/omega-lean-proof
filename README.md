@@ -224,3 +224,28 @@ The next major step is to replace the `compute_hash` opaque declaration in `Omeg
 The canonical downloadable v1.2 artifact remains at  
 `https://omegaprotocol.org/omega/formal-proof/omega_v12_lean4_proof.lean`  
 (this repository's `v12-source/` copy matches that file for provenance).
+
+## Source file hashes (SHA-256, at 6aa9008)
+
+Per-file source hashes for the ten shipped roots and the four JCS encoder
+modules, recorded here (canonical home for verification detail; moved from the
+formal-proof page on the site).
+
+| File | SHA-256 |
+|------|---------|
+| OmegaProof.lean | `2871ed6e76473b64df394be201ef4a2eecfb50029327d334a4d58014ca1c4e64` |
+| OmegaV14.lean | `0f2b471eed18fea5e27c5515e223cf0f11fb82881befb5adf38d453c83a5423e` |
+| OmegaP3Semantic.lean | `48c402f669b7ed9f2db39f5ae7cad26f0c07a58c7c650b6cbdf3538410deef50` |
+| OmegaP1Governance.lean | `a7367304f44ae727f384dcdc119dc282b87d9aaf5743f59f2fed82fd689990bb` |
+| FailureProtocol.lean | `cab7e95fa2cdb978b0d2523594a5fc4470eae6525c5772fb235f00167d30aab7` |
+| OmegaHashChain.lean | `fcb3f76359da240c1d31efecfc68825acab042c0841e91cc193a239cf71e3b8f` |
+| OmegaGovernance.lean | `8c9d5e7f8fd392febd72df5ef5e296a2d7c08b8eac3831e6aa8569397fcf2231` |
+| OmegaJCSChain.lean | `4ba90bd45f4c6c4c879de8a5e7d0301d9ae77ff14677a1d1d9c7136562ad7c30` |
+| OmegaP5Gate.lean | `46f5c3df0543cf5f7c628fc262214a7ceaa5edf26f21a10e57f86ee40d4d26a8` |
+| OmegaProvenance.lean | `fbc62b16008782c8393e32d5af2fd225cd77ce07413bea78e537d1c5e97acfa9` |
+| OmegaJCS/Types.lean | `d55877043733e6c02bb802e22375da8c2946b1ab5d2772712759272b12906d3a` |
+| OmegaJCS/Encode.lean | `e7bb1484756dff6c1ad2f921aed00c4a5d18ff57b0741af17de17e4f5f48c10b` |
+| OmegaJCS/Decode.lean | `388c4f93324d614e02d8b84f67908fcfa7af409c95e9f9a66e3d5358067d46cd` |
+| OmegaJCS/Roundtrip.lean | `8c124bd755fff23b7d8545237613e53007e10ded32ab0e3d328d95ef1170e8a4` |
+
+`lean4lean` v4.29 segfaults on `OmegaProof`; SafeVerify v4.27 is used for attestation.
