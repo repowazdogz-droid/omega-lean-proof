@@ -1,9 +1,10 @@
 # OMEGA polyglot bindings — ATTESTATION MANIFEST
 
-> **STATUS: HELD — DO NOT PUBLISH.** Internal attestation record. Nothing in this
-> manifest, and none of the binding files or oleans it references, is to be made
-> public until explicitly cleared. (Aligns with the standing Centric/strategy
-> privacy gate.)
+> **STATUS: PUBLISHED — PUBLIC ARTIFACT.** This manifest, the binding sources and the
+> receipts it references are public on `main` (merged in PR #1). The `.olean` build
+> artifacts are not committed: CI rebuilds them from a clean checkout on every push and
+> re-derives their digests. The earlier HELD / DO-NOT-PUBLISH status is superseded and
+> no longer applies.
 
 Run date (UTC): **2026-06-30T06:54Z**
 Produced by: SafeVerify pipeline (Lean kernel) + per-paradigm tool re-run
