@@ -15,19 +15,11 @@ JAR=/Users/warre/tla-omega/tla2tools.jar
 CV=/Users/warre/.opam/proverif/bin/cryptoverif
 BINDINGS="OmegaP6ABinding OmegaP4MBinding OmegaP6AtomicBinding OmegaP12Binding OmegaP2DAGBinding OmegaP4TBinding OmegaP6LBinding"
 
-echo "== [0] clean shipped build (oleans for OmegaV14 etc.) =="
-lake build >/dev/null 2>&1 && echo "  lake build OK" || { echo "  lake build FAILED"; exit 1; }
-
-echo "== [A] Lean bindings: compile -> SafeVerify self-replay =="
-export LEAN_PATH="$ROOT/.lake/build/lib/lean"
-for b in $BINDINGS; do
-  lake env lean -o "$OLE/$b.olean" "$b.lean" >/dev/null 2>&1 || { echo "  $b compile FAILED"; exit 1; }
-  if "$SV" "$OLE/$b.olean" "$OLE/$b.olean" --save "$RCP/$b.json" >/dev/null 2>&1; then
-    echo "  $b: SafeVerify PASS"
-  else
-    echo "  $b: SafeVerify FAIL"; exit 1
-  fi
-done
+echo "== [0+A] Lean lane: build, bindings, SafeVerify self-replay, axiom policy =="
+# Single source of truth, shared with .github/workflows/reproducibility.yml so the
+# local pipeline and CI cannot drift. Adds a rebuild-determinism check and the
+# zero-axiom policy on top of what this step used to do; both must pass.
+SAFE_VERIFY="$SV" OLEAN_DIR="$OLE" RECEIPT_DIR="$RCP" bash "$ROOT/attested/verify-lean.sh" || exit 1
 
 echo "== [B1] CryptoVerif =="
 ( cd "$ROOT/../crypto-conjuncts-cv"
