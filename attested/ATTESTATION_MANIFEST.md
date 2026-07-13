@@ -16,17 +16,33 @@ nothing shipped was modified.
 | Item | Value |
 |------|-------|
 | Repo | `~/Omega/lean-proof` (github.com/repowazdogz-droid/omega-lean-proof) |
-| Shipped tree HEAD | `6aa9008db9789a2c29989d4a84f50445905572d4` |
+| Olean base of this run (2026-06-30) | `6aa9008db9789a2c29989d4a84f50445905572d4` — the shipped tree the bindings were compiled against on the day. Historical: at that commit the bindings were not yet tracked. |
+| Binding sources committed at | `dc3e319` (first commit containing them; reached `main` via the PR #1 merge). Not a moving pin: later commits are verified by their own CI run, not by a SHA recorded here. |
 | Binding files | **tracked and committed on `main`** (`OmegaP*Binding.lean`, merged in PR #1); intentionally **not** in the Lake roots, and independently rebuilt and verified from a clean checkout by the reproducibility workflow on every push |
 | In-project Lean | `v4.27.0` (pinned by `lean-toolchain`; global elan default is 4.31.0 and is NOT what ran) |
 | SafeVerify binary | `.cache/SafeVerify/.lake/build/bin/safe_verify`, runs on Lean **v4.27.0**, sha256 `104baa73…56d15f` |
 | Allowlist (hardcoded in SafeVerify) | `{propext, Quot.sound, Classical.choice}` |
 
-**What "attested commit" means here:** the shipped olean base is HEAD `6aa9008`
-(`lake build`, 16 jobs, clean). The bindings themselves are **additive untracked
-files** compiled against that base. They are NOT yet committed and NOT Lake roots,
-so there is no attested *commit* for the bindings — only an attested *run* (this
-manifest) against the `6aa9008` olean base. See "Path-to-roots" below.
+**What is attested, and at what granularity.** Three things are distinct and are not
+collapsed here:
+
+1. *This run.* The record below is a single run, on 2026-06-30, on the author's machine,
+   against the olean base `6aa9008`. At that commit the bindings were untracked working-tree
+   files. That is what this manifest is a receipt for, and it remains a receipt for exactly
+   that.
+2. *The committed sources.* Since PR #1 the seven binding sources are tracked and committed
+   (`dc3e319`, merged to `main`). So there is now an attested *commit*, which there was not
+   when this manifest was first written. What attests it is not this file: it is the
+   `reproducibility` workflow, which re-derives the Lean lane from a clean checkout on every
+   push and fails on toolchain drift, a non-deterministic rebuild, a SafeVerify failure, or an
+   attested theorem acquiring an axiom. The evidence for any given commit is that commit's run
+   and its uploaded artifacts, not a SHA written here.
+3. *Lake roots.* The bindings are still deliberately **not** Lake roots. Adding one changes the
+   package's public surface and needs its own review. Being committed and being a root are
+   separate decisions, and only the first has happened. See "Path-to-roots" below.
+
+The workflow establishes the Lean lane only. The CryptoVerif, Z3 and TLA+ correspondence logs
+recorded here are from the author's machine and are **not** re-derived by CI.
 
 ---
 
