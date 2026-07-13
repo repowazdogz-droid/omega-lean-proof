@@ -17,7 +17,7 @@ nothing shipped was modified.
 |------|-------|
 | Repo | `~/Omega/lean-proof` (github.com/repowazdogz-droid/omega-lean-proof) |
 | Shipped tree HEAD | `6aa9008db9789a2c29989d4a84f50445905572d4` |
-| Binding files | **untracked, additive** (`?? OmegaP*Binding.lean`) — not committed, not in Lake roots |
+| Binding files | **tracked and committed on `main`** (`OmegaP*Binding.lean`, merged in PR #1); intentionally **not** in the Lake roots, and independently rebuilt and verified from a clean checkout by the reproducibility workflow on every push |
 | In-project Lean | `v4.27.0` (pinned by `lean-toolchain`; global elan default is 4.31.0 and is NOT what ran) |
 | SafeVerify binary | `.cache/SafeVerify/.lake/build/bin/safe_verify`, runs on Lean **v4.27.0**, sha256 `104baa73…56d15f` |
 | Allowlist (hardcoded in SafeVerify) | `{propext, Quot.sound, Classical.choice}` |
