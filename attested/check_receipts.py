@@ -16,15 +16,23 @@ different claims:
 The attested set is read out of the .lean sources rather than hardcoded here, so
 adding a theorem to a binding without attesting it cannot silently widen the claim.
 
+The attested set is derived from the sources, which means it can also SHRINK with the
+sources: delete the `#print axioms` lines and the check would happily verify whatever
+is left and still report success. MIN_ATTESTED is the floor that stops that being
+silent. Raise it when theorems are added; lowering it is a deliberate, reviewable act.
+
 Usage: check_receipts.py <receipt-dir> <binding> [<binding> ...]
+Env:   MIN_ATTESTED (default 44)
 """
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 ALLOWLIST = {"propext", "Quot.sound", "Classical.choice"}
+MIN_ATTESTED = int(os.environ.get("MIN_ATTESTED", "44"))
 PRINT_AXIOMS = re.compile(r"^\s*#print\s+axioms\s+([A-Za-z_][\w.']*)\s*$", re.M)
 
 
@@ -78,13 +86,19 @@ def main() -> int:
             violations.append(f"{name}: attested but absent from receipt: {', '.join(sorted(missing))}")
         attested_seen += len(found)
 
+    if attested_seen < MIN_ATTESTED:
+        violations.append(
+            f"coverage floor: {attested_seen} attested theorems checked, "
+            f"MIN_ATTESTED={MIN_ATTESTED}. Theorems were removed from the attested set."
+        )
+
     if violations:
         print(f"FAIL: axiom policy violated ({len(violations)}):")
         for v in violations:
             print(f"  {v}")
         return 1
 
-    print(f"  {attested_seen} attested theorems: zero axioms")
+    print(f"  {attested_seen} attested theorems: zero axioms (floor {MIN_ATTESTED})")
     print(f"  generated declarations: within allowlist {{{', '.join(sorted(ALLOWLIST))}}}")
     return 0
 

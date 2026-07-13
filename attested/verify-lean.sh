@@ -17,8 +17,20 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 
-BINDINGS=(OmegaP6ABinding OmegaP4MBinding OmegaP6AtomicBinding OmegaP12Binding
-          OmegaP2DAGBinding OmegaP4TBinding OmegaP6LBinding)
+# Discovered from the tree, never hardcoded: a hardcoded list means a binding added
+# to the repo is silently never attested, and CI stays green while it sits there.
+# EXPECTED_BINDINGS then catches the other direction, a binding being deleted.
+BINDINGS=()
+for f in "$ROOT"/OmegaP*Binding.lean; do
+  [ -e "$f" ] || break
+  BINDINGS+=("$(basename "$f" .lean)")
+done
+EXPECTED_BINDINGS="${EXPECTED_BINDINGS:-7}"
+if [ "${#BINDINGS[@]}" -ne "$EXPECTED_BINDINGS" ]; then
+  echo "FAIL: found ${#BINDINGS[@]} bindings (${BINDINGS[*]:-none}), expected $EXPECTED_BINDINGS."
+  echo "      If this is intended, update EXPECTED_BINDINGS and the attestation manifest together."
+  exit 1
+fi
 
 SV="${SAFE_VERIFY:-$ROOT/.cache/SafeVerify/.lake/build/bin/safe_verify}"
 OLE="${OLEAN_DIR:-$ROOT/attested/oleans}"

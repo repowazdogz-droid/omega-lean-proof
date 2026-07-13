@@ -172,13 +172,17 @@ request. Treat it as part of the assurance argument, not as build hygiene.
 
 1. The running Lean is the toolchain pinned in [`lean-toolchain`](./lean-toolchain) (`v4.27.0`).
 2. The shipped library builds.
-3. All seven bindings compile.
+3. All seven bindings compile. The binding list is **discovered from the tree, not hardcoded**, and the count is
+   checked against `EXPECTED_BINDINGS` (7), so neither an added binding that nobody attested nor a deleted one
+   can pass unnoticed.
 4. **Determinism.** Each binding is compiled twice on the runner and must be byte-identical.
 5. **Independent re-check.** SafeVerify, built from pinned commit `b291b58` (never a tag), kernel-typechecks
    every declaration on a rebuilt expression tree. Its own digest is recorded in each run.
 6. **Axiom policy**, two tiers, read out of the sources rather than hardcoded:
    - *Attested* theorems, meaning those named by a `#print axioms` line in a binding (currently 44), must
-     depend on **zero** axioms.
+     depend on **zero** axioms. Because that set is read from the sources it could also shrink with them, so a
+     coverage floor (`MIN_ATTESTED`, 44) fails the run if theorems are removed from the attested set. Raising
+     it is routine; lowering it is a reviewable act.
    - *Generated* declarations, meaning the structure lemmas, `Repr` instances and recursors Lean synthesises,
      must stay inside the kernel allowlist `{propext, Quot.sound, Classical.choice}`. Several of them do use
      `propext`. They are not claims anyone made, and the strict tier is not applied to them.
