@@ -7,6 +7,8 @@ Public [Lake](https://github.com/leanprover/lean4) package for the **OMEGA Proto
 
 Licensed under the [MIT License](./LICENSE).
 
+[![reproducibility](https://github.com/repowazdogz-droid/omega-lean-proof/actions/workflows/reproducibility.yml/badge.svg?branch=main)](https://github.com/repowazdogz-droid/omega-lean-proof/actions/workflows/reproducibility.yml)
+
 ## Verification status (2026-06-12)
 
 Current machine-checked status. This supersedes the dated receipts further down (which reference the earlier `v4.18.0` pin and a since-removed axiom). Every claim has a command — run the command rather than trust the prose.
