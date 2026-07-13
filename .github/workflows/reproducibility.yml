@@ -1,0 +1,103 @@
+name: reproducibility
+
+# Re-derives the Lean attestation from a clean checkout on every push and PR.
+# The attestation manifest is a claim; this is the machine that re-checks it.
+#
+# Scope is deliberately narrow. See "Continuous Reproducibility" in README.md for
+# what a green run does and does not establish.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# Read-only. This workflow verifies; it never writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned by digest, not by tag: a tag can be moved, a commit cannot.
+  SAFEVERIFY_REPO: https://github.com/GasStationManager/SafeVerify.git
+  SAFEVERIFY_COMMIT: b291b588a53999a7e837dda61c7dbfe8c550c814
+  ELAN_VERSION: v4.2.3
+  ELAN_SHA256: df0b2b3a439961ffcbb3985214365ffe40f49bc871df04dff268c7d8e21ca8b2
+
+jobs:
+  lean-attestation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out the proof
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install elan (pinned, checksum-verified)
+        run: |
+          set -euo pipefail
+          url="https://github.com/leanprover/elan/releases/download/${ELAN_VERSION}/elan-x86_64-unknown-linux-gnu.tar.gz"
+          curl -fsSL --proto '=https' --tlsv1.2 -o elan.tar.gz "$url"
+          echo "${ELAN_SHA256}  elan.tar.gz" | sha256sum -c -
+          tar -xzf elan.tar.gz
+          # -y: no prompt. No default toolchain: lean-toolchain in the repo decides.
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache the Lean toolchain and build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.elan
+            .lake
+          key: lean-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json') }}
+
+      # The verifier is built from source, from a pinned commit, on every run.
+      #
+      # It is deliberately NOT cached. A GitHub Actions cache is writable from any
+      # branch of the repository, so a cached verifier binary is an object an
+      # attacker could replace with one that returns PASS unconditionally. The
+      # thing that decides whether the attestation holds is the last thing that
+      # should come out of a mutable cache. Rebuilding costs a few minutes; the
+      # Mathlib oleans it needs come from `lake exe cache get`, so this is not a
+      # from-source Mathlib build.
+      - name: Build SafeVerify from the pinned commit
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none "$SAFEVERIFY_REPO" .cache/SafeVerify
+          cd .cache/SafeVerify
+          git checkout --detach "$SAFEVERIFY_COMMIT"
+          test "$(git rev-parse HEAD)" = "$SAFEVERIFY_COMMIT"
+          lake exe cache get          # Mathlib prebuilt oleans; building it from source is hours.
+          lake build safe_verify
+
+      - name: Record the verifier's digest
+        run: shasum -a 256 .cache/SafeVerify/.lake/build/bin/safe_verify | tee verifier.sha256
+
+      - name: Re-derive the attestation
+        run: |
+          set -euo pipefail
+          mkdir -p ci-out/oleans ci-out/receipts
+          OLEAN_DIR="$PWD/ci-out/oleans" \
+          RECEIPT_DIR="$PWD/ci-out/receipts" \
+          SUMS_FILE="$PWD/ci-out/SHA256SUMS" \
+            bash attested/verify-lean.sh 2>&1 | tee ci-out/verify.log
+
+      # Uploaded on failure and on success: on failure it is the evidence, on success
+      # it is the record. Digests are the point of the exercise either way.
+      - name: Upload attestation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: attestation-${{ github.sha }}
+          path: |
+            ci-out/verify.log
+            ci-out/SHA256SUMS
+            ci-out/receipts/
+            verifier.sha256
+          if-no-files-found: warn
+          retention-days: 30

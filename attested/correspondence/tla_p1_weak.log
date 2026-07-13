@@ -1,0 +1,559 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 45 and seed 3298816505925128756 with 1 worker on 16 cores with 12288MB heap and 64MB offheap memory [pid: 35686] (Mac OS X 15.7.3 aarch64, Homebrew 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/warre/Omega/p1-freshness-tla/P1Freshness.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Integers.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module P1Freshness
+Starting... (2026-06-30 07:57:28)
+Computing initial states...
+Computed 2 initial states...
+Computed 4 initial states...
+Computed 8 initial states...
+Computed 16 initial states...
+Computed 32 initial states...
+Computed 64 initial states...
+Computed 128 initial states...
+Computed 256 initial states...
+Finished computing initial states: 301 distinct states generated at 2026-06-30 07:57:28.
+Error: Invariant Freshness is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 0
+
+State 2: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 1
+
+State 3: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 2
+
+State 4: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 3
+
+State 5: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 4
+
+State 6: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 5
+
+State 7: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 6
+
+State 8: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 7
+
+State 9: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 8
+
+State 10: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 9
+
+State 11: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 10
+
+State 12: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 11
+
+State 13: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 12
+
+State 14: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 13
+
+State 15: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 14
+
+State 16: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 15
+
+State 17: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 16
+
+State 18: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 17
+
+State 19: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 18
+
+State 20: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 19
+
+State 21: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 20
+
+State 22: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 21
+
+State 23: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 22
+
+State 24: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 23
+
+State 25: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 24
+
+State 26: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 25
+
+State 27: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 26
+
+State 28: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 27
+
+State 29: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 28
+
+State 30: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 29
+
+State 31: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 30
+
+State 32: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 31
+
+State 33: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 32
+
+State 34: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 33
+
+State 35: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 34
+
+State 36: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 35
+
+State 37: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 36
+
+State 38: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 37
+
+State 39: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 38
+
+State 40: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 39
+
+State 41: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 40
+
+State 42: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 41
+
+State 43: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 42
+
+State 44: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 43
+
+State 45: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 44
+
+State 46: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 45
+
+State 47: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 46
+
+State 48: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 47
+
+State 49: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 48
+
+State 50: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 49
+
+State 51: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 50
+
+State 52: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 51
+
+State 53: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 52
+
+State 54: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 53
+
+State 55: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 54
+
+State 56: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 55
+
+State 57: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 56
+
+State 58: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 57
+
+State 59: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 58
+
+State 60: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 59
+
+State 61: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 60
+
+State 62: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 61
+
+State 63: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 62
+
+State 64: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 63
+
+State 65: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 64
+
+State 66: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 65
+
+State 67: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 66
+
+State 68: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 67
+
+State 69: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 68
+
+State 70: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 69
+
+State 71: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 70
+
+State 72: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 71
+
+State 73: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 72
+
+State 74: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 73
+
+State 75: <Tick line 66, col 5 to line 68, col 58 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 74
+
+State 76: <Present line 76, col 5 to line 83, col 36 of module P1Freshness>
+/\ ageAtAccept = 74
+/\ done = TRUE
+/\ issuedAt = 0
+/\ accepted = TRUE
+/\ clock = 74
+
+92877 states generated, 92877 distinct states found, 3076 states left on queue.
+The depth of the complete state graph search is 76.
+The average outdegree of the complete state graph is 1 (minimum is 1, the maximum 2 and the 95th percentile is 1).
+Finished in 00s at (2026-06-30 07:57:28)

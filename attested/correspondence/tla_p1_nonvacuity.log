@@ -1,0 +1,40 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running breadth-first search Model-Checking with fp 128 and seed -1588317190384284649 with 1 worker on 16 cores with 12288MB heap and 64MB offheap memory [pid: 35911] (Mac OS X 15.7.3 aarch64, Homebrew 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/warre/Omega/p1-freshness-tla/P1Freshness.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Integers.tla
+Parsing file /private/var/folders/z7/csd85ck90yq924xjkp_0mp_00000gn/T/Naturals.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module P1Freshness
+Starting... (2026-06-30 07:57:33)
+Computing initial states...
+Computed 2 initial states...
+Computed 4 initial states...
+Computed 8 initial states...
+Computed 16 initial states...
+Computed 32 initial states...
+Computed 64 initial states...
+Computed 128 initial states...
+Computed 256 initial states...
+Finished computing initial states: 301 distinct states generated at 2026-06-30 07:57:33.
+Error: Invariant NoFreshAccept is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ ageAtAccept = 0
+/\ done = FALSE
+/\ issuedAt = 0
+/\ accepted = FALSE
+/\ clock = 0
+
+State 2: <Present line 76, col 5 to line 83, col 36 of module P1Freshness>
+/\ ageAtAccept = 0
+/\ done = TRUE
+/\ issuedAt = 0
+/\ accepted = TRUE
+/\ clock = 0
+
+303 states generated, 303 distinct states found, 301 states left on queue.
+The depth of the complete state graph search is 2.
+Finished in 00s at (2026-06-30 07:57:33)
