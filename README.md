@@ -1,13 +1,42 @@
 # omega-lean-proof
 
-Public [Lake](https://github.com/leanprover/lean4) package for the **OMEGA Protocol v1.3** Lean 4 scaffolding: [`OmegaProof.lean`](./OmegaProof.lean).
-
-**Project site:** [omegaprotocol.org](https://omegaprotocol.org/)  
-**Formal proof page:** [omegaprotocol.org/omega/formal-proof/](https://omegaprotocol.org/omega/formal-proof/)
-
-Licensed under the [MIT License](./LICENSE).
-
 [![reproducibility](https://github.com/repowazdogz-droid/omega-lean-proof/actions/workflows/reproducibility.yml/badge.svg?branch=main)](https://github.com/repowazdogz-droid/omega-lean-proof/actions/workflows/reproducibility.yml)
+[![Lean 4](https://img.shields.io/badge/Lean-4%20(v4.27.0)-blue.svg)](./lean-toolchain)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+A machine-checked Lean 4 proof that a canonical-encoding, hash-linked record chain
+is **tamper-evident**. Concretely, the shipped theorems establish:
+
+- **Canonical encoding is injective and round-trips.** `jcsEncode` maps distinct
+  well-formed JSON values to distinct byte strings, and `jcsDecode (jcsEncode v) = some v`
+  (`OmegaJCS.jcsEncode_injective`, `OmegaJCS.decode_encode`).
+- **Tampering forces a hash collision** in a hash-linked chain
+  (`OmegaP3Semantic.tamper_implies_collision`), so under a collision-resistance
+  hypothesis a tampered chain cannot satisfy traceability
+  (`OmegaP3Semantic.tamper_detection`).
+- **The chain is append-only**: appending a well-formed record at the tip leaves
+  every prior entry unchanged (`OmegaHashChain.omega_chain_append_only`).
+
+**Assumptions.** The proofs use only Lean's standard axioms
+(`propext`, `Classical.choice`, `Quot.sound`); there is **no Mathlib** and **no
+user-declared axiom**. SHA-256 is modelled as one opaque, uninterpreted function
+(`compute_hash`), and its collision-resistance is carried as an **explicit theorem
+hypothesis** discharged at each call site, not as a global axiom. The constructive
+core `tamper_implies_collision` is axiom-free.
+
+**Verification.** `lake build` is green (16 jobs, zero `sorry` in shipped roots);
+`#print axioms` on each theorem reports only the three standard axioms; a CI
+[reproducibility workflow](./.github/workflows/reproducibility.yml) re-derives the
+result from a clean checkout on a pinned toolchain (Lean `v4.27.0`, no external Lake
+dependencies). Every claim below has a command; run the command rather than trust the
+prose.
+
+This proof underpins the record-integrity properties of the **OMEGA Protocol**
+([omegaprotocol.org](https://omegaprotocol.org/),
+[formal-proof page](https://omegaprotocol.org/omega/formal-proof/)), a personal
+project on governance predicates for AI decision records. That context is not needed
+to read the proof: the theorems above stand on their own. Licensed under the
+[MIT License](./LICENSE).
 
 ## Verification status (2026-06-12)
 
