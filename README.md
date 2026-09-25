@@ -11,18 +11,43 @@ is **tamper-evident**. Concretely, the shipped theorems establish:
   well-formed JSON values to distinct byte strings, and `jcsDecode (jcsEncode v) = some v`
   (`OmegaJCS.jcsEncode_injective`, `OmegaJCS.decode_encode`).
 - **Tampering forces a hash collision** in a hash-linked chain
-  (`OmegaP3Semantic.tamper_implies_collision`), so under a collision-resistance
-  hypothesis a tampered chain cannot satisfy traceability
-  (`OmegaP3Semantic.tamper_detection`).
+  (`OmegaP3Semantic.tamper_implies_collision`): any payload tamper that still verifies
+  yields two distinct byte strings with equal `compute_hash`. This is the principal result.
+  `OmegaP3Semantic.tamper_detection` is a corollary that additionally assumes `compute_hash`
+  is **injective**, which is strictly stronger than collision resistance and cannot hold for
+  SHA-256; see *Assumptions*.
 - **The chain is append-only**: appending a well-formed record at the tip leaves
   every prior entry unchanged (`OmegaHashChain.omega_chain_append_only`).
 
 **Assumptions.** The proofs use only Lean's standard axioms
 (`propext`, `Classical.choice`, `Quot.sound`); there is **no Mathlib** and **no
-user-declared axiom**. SHA-256 is modelled as one opaque, uninterpreted function
-(`compute_hash`), and its collision-resistance is carried as an **explicit theorem
-hypothesis** discharged at each call site, not as a global axiom. The constructive
-core `tamper_implies_collision` is axiom-free.
+user-declared axiom**. This holds for `tamper_implies_collision` too: `#print axioms`
+reports the same three standard axioms for it as for `tamper_detection`, `decode_encode` and `jcsEncode_injective`
+(`omega_chain_append_only` reports only `propext`), so it is
+free of user axioms, not axiom-free.
+
+`compute_hash` is one opaque, uninterpreted function. Nothing in this development connects
+it to SHA-256, so the theorems are statements about an arbitrary hash function, and they say
+nothing about SHA-256 unless that connection is supplied separately.
+
+- **Hash injectivity is not collision resistance.** `tamper_implies_collision` assumes
+  neither. It concludes `∃ a b, a ≠ b ∧ compute_hash a = compute_hash b`, and that is the
+  whole claim: a tamper that verifies is a collision.
+- `tamper_detection` (and `tamper_detection_computational_stub`, whose name is misleading)
+  takes the hypothesis `hash_cr : ∀ a b, compute_hash a = compute_hash b → a = b`. That is
+  **injectivity**. It is false for any compressing function, SHA-256 included, by pigeonhole
+  (the source comment on `tamper_detection` says so). For SHA-256 the hypothesis cannot be
+  discharged, so `tamper_detection` establishes nothing about SHA-256. It is a valid
+  implication for a hypothetical injective hash and is kept for call-site compatibility.
+- **Collision resistance is a computational assumption** (no efficient adversary finds a
+  collision). It is not expressed, assumed or proved in the Lean development. The separate
+  CryptoVerif model `PChainIntegrity_cr.cv` treats it as a named assumption on `Phash`
+  (committed log: `attested/correspondence/cv_PChainIntegrity_cr.log`; that lane needs sibling
+  repositories and is not re-run from a clean checkout, and it was not re-run for this
+  correction). There is no mechanised link between the Lean and CryptoVerif models.
+- Comments in `OmegaJCSChain.lean` that say a tamper "forces a SHA-256 collision" mean a
+  collision in `compute_hash`, the opaque placeholder; the sentence about production SHA-256
+  is a statement about intent, not something the Lean development proves.
 
 **Verification.** `lake build` is green (16 jobs, zero `sorry` in shipped roots);
 `#print axioms` on each theorem reports only the three standard axioms; a CI
@@ -37,6 +62,16 @@ This proof underpins the record-integrity properties of the **OMEGA Protocol**
 project on governance predicates for AI decision records. That context is not needed
 to read the proof: the theorems above stand on their own. Licensed under the
 [MIT License](./LICENSE).
+
+> **Correction (2026-09-25).** Earlier versions of this README and of the `v0.1.0` release
+> notes described `hash_cr` as a *collision-resistance* hypothesis and said that under it "a
+> tampered chain cannot satisfy traceability"; earlier versions of this README also called
+> `tamper_implies_collision` "axiom-free". All of that was wrong. `hash_cr` is injectivity,
+> which is false for SHA-256, so `tamper_detection` says nothing about SHA-256; and
+> `tamper_implies_collision` depends on Lean's three standard axioms (`propext`,
+> `Classical.choice`, `Quot.sound`), as the other theorems do. The theorems and their proofs
+> are unchanged; only the description is corrected. The `v0.1.0` tag is not moved, and the original
+> release notes are preserved verbatim in the release description, under the correction.
 
 ## Verification status (2026-06-12)
 
@@ -55,13 +90,13 @@ grep -c require lakefile.lean   # 0
 lake build                      # Build completed successfully (16 jobs)
 ```
 
-**`sorry` in shipped code: 0.** No shipped Lake root contains a proof-term `sorry`. The only real `sorry` left in the repo is one `OPEN` marker in the non-root `OmegaV15.lean` draft (see Known open items); a clean `lake build` emits no `uses 'sorry'` warning.
+**`sorry` in shipped code: 0.** No shipped Lake root contains a proof-term `sorry`. The non-root `OmegaV15.lean` draft also compiles with no `sorry` warning (checked 2026-09-25 in a copy); it still carries deferred, non-`sorry` items (see Known open items). A clean `lake build` emits no `uses 'sorry'` warning.
 
 ```bash
 lake build 2>&1 | grep -c "uses 'sorry'"   # 0
 ```
 
-**Axioms: zero user-declared axioms.** No `axiom` is declared in any shipped root. One `opaque` declaration, `compute_hash` (a SHA-256 placeholder, uninterpreted — not an axiom), is the only uninterpreted constant. The cryptographic assumption behind tamper-evidence (hash injectivity / collision resistance) is carried as an **explicit theorem hypothesis** (`hash_cr`), discharged at each call site, rather than as a global axiom; the axiom-free constructive core is `tamper_implies_collision`. Every shipped theorem depends only on Lean's standard built-ins `propext`, `Classical.choice`, `Quot.sound`.
+**Axioms: zero user-declared axioms.** No `axiom` is declared in any shipped root. One `opaque` declaration, `compute_hash` (a SHA-256 placeholder, uninterpreted — not an axiom), is the only uninterpreted constant. The tamper-evidence result is `tamper_implies_collision`, which assumes nothing about the hash. The corollary `tamper_detection` takes **hash injectivity** as an explicit theorem hypothesis (`hash_cr`), discharged at each call site rather than declared as a global axiom; injectivity is strictly stronger than collision resistance and false for SHA-256 (see *Assumptions* above). Every shipped theorem, `tamper_implies_collision` included, depends only on Lean's standard built-ins `propext`, `Classical.choice`, `Quot.sound` (checked with `#print axioms`, Lean `v4.27.0`, 2026-09-25).
 
 ```bash
 grep -rn '^[[:space:]]*axiom ' *.lean OmegaJCS/*.lean   # (no output: zero axioms)
@@ -82,11 +117,11 @@ lake env lean /tmp/ax.lean
 |---|---|---|
 | `OmegaJCS.decode_encode` | [`OmegaJCS/Roundtrip.lean`](./OmegaJCS/Roundtrip.lean) | Decoding the canonical (JCS) encoding of a well-formed JSON value returns it: `jcsDecode (jcsEncode v) = some v`. |
 | `OmegaJCS.jcsEncode_injective` | [`OmegaJCS/Roundtrip.lean`](./OmegaJCS/Roundtrip.lean) | Distinct well-formed JSON values have distinct canonical encodings. |
-| `OmegaP3Semantic.tamper_implies_collision` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Altering a payload in a hash-linked record chain forces a `compute_hash` collision (axiom-free). |
-| `OmegaP3Semantic.tamper_detection` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Under an explicit hash-injectivity hypothesis, a tampered chain cannot satisfy `P3_Traceability`. |
+| `OmegaP3Semantic.tamper_implies_collision` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Altering a payload in a hash-linked record chain forces a `compute_hash` collision. No hypothesis on the hash; standard axioms only. |
+| `OmegaP3Semantic.tamper_detection` | [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | Under an explicit hash-**injectivity** hypothesis (unsatisfiable for SHA-256, and not collision resistance), a tampered chain cannot satisfy `P3_Traceability`. |
 | `OmegaHashChain.omega_chain_append_only` | [`OmegaHashChain.lean`](./OmegaHashChain.lean) | Appending a well-formed record at the tip leaves all prior entries unchanged. |
 
-**Known open items.** `OmegaV15.lean` is a parallel v1.5 draft, **not** a Lake root. It carries one `OPEN [O2]` obligation, `p6_no_coalition_escape`, which is **false as written**: the premise `P6_AgencyBoundary_Holds` admits the atomic-single-actor mode that the conclusion excludes, and the coupling hypothesis ranges over variables independent of the boundary. The refutation is machine-checked in [`probes/O2Counterexample.lean`](./probes/O2Counterexample.lean) (`o2_premise_too_weak`, axiom-free); a corrected statement is future work. Development scratch probes were archived to `archived/lean-proof-scratch-2026-06-12.tar.zst` and removed from the tree.
+**Known open items.** `OmegaV15.lean` is a parallel v1.5 draft, **not** a Lake root. It once carried an `OPEN [O2]` obligation, `p6_no_coalition_escape`, and that original statement was **false as written**: the premise `P6_AgencyBoundary_Holds` admits the atomic-single-actor mode that the conclusion excludes, and the coupling hypothesis ranged over variables independent of the boundary. The refutation is machine-checked in [`probes/O2Counterexample.lean`](./probes/O2Counterexample.lean) (`o2_premise_too_weak`, no axioms). A repaired statement, which ties the coupling finding to the boundary through a `h_atomic_single` hypothesis, was proved in `OmegaV15.lean` (commit `55a4c38`, 2026-06-11) as `p6_no_coalition_escape`, together with `o2_repaired_non_vacuous` (the hypotheses are satisfiable) and `o2_old_counterexample_excluded` (the old counterexample fails the new hypotheses); `#print axioms` reports no axioms for all three (checked 2026-09-25 in a copy). This is a statement about the draft only: `detectCoupling` remains a stub, so the theorem is over the finding type it is typed to produce and not over real detector output, and the draft is not part of the shipped bundle. Other deferred items in the draft's header (for example the strong parametric-purity form [O1]) remain open, and a comment further down in the draft still describes [O2] as open. Development scratch probes were archived to `archived/lean-proof-scratch-2026-06-12.tar.zst` and removed from the tree.
 
 ## What is formalised?
 
@@ -129,11 +164,11 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 |------|----------|------------------|--------------------------------------|
 | [`OmegaProof.lean`](./OmegaProof.lean) (v1.3) | 17-conjunct `Governed`, 37 theorems: necessity projections, joint sufficiency, contrapositive absence, biconditional, packaging | 0 | none |
 | [`OmegaV14.lean`](./OmegaV14.lean) (v1.4.1) | 22-conjunct `Governed` extending v1.3 with `P2_DAG`, `P6_AtomicAgency`, `P1_Freshness`, `P4T_EnvInvariant`, `P_ChainIntegrity`; 13 theorems on the same pattern | 0 | none |
-| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` (well-formedness, hash linkage, seq-num contiguity), a verified canonical-encoding decoder with proven injectivity on WF records, a real tamper-detection proof, and two machine-checked counterexample theorems documenting the removed `canonicalBytes_injective` axiom | 0 | **none** — `compute_hash` (SHA-256 placeholder, `opaque`) is the only uninterpreted constant; collision resistance is carried as an explicit theorem hypothesis (`hash_cr`), discharged at each call site, not a global axiom |
+| [`OmegaP3Semantic.lean`](./OmegaP3Semantic.lean) | `P3_Traceability` as a concrete predicate over `List Record` (well-formedness, hash linkage, seq-num contiguity), a verified canonical-encoding decoder with proven injectivity on WF records, a real tamper-detection proof, and two machine-checked counterexample theorems documenting the removed `canonicalBytes_injective` axiom | 0 | **none** — `compute_hash` (SHA-256 placeholder, `opaque`) is the only uninterpreted constant; hash injectivity (not collision resistance) is carried as an explicit theorem hypothesis (`hash_cr`), discharged at each call site, not a global axiom |
 | [`OmegaP1Governance.lean`](./OmegaP1Governance.lean) | `P1_Governance` as a concrete predicate over the contract-and-agent presence pair; 2 theorems on contract and agent necessity | 0 | none |
 | [`FailureProtocol.lean`](./FailureProtocol.lean) | `FailureAction` inductive with six cases (`retry`, `dead_letter`, `escalate_first`, `escalate_second`, `kill`, `circuit_breaker`); 1 theorem linking retry-limit overflow to escalation | 0 | none |
 
-`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces one `opaque` declaration — `compute_hash` (a SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below). It declares **no user axioms**: collision resistance is carried as an explicit theorem hypothesis (`hash_cr`) discharged at each call site, so `tamper_detection` depends only on Lean built-ins (`#print axioms` → `[propext, Classical.choice, Quot.sound]`). The constructive core `tamper_implies_collision`, the encoding-injectivity theorem `canonicalBytes_injective_wf`, and the decoder roundtrip `decode_encode` likewise depend on no user axioms. `FailureProtocol.lean` carries no `sorry`: the monitoring obligation for excessive-retries-with-success is deliberately **not** encoded as a Lean theorem (it would require an axiom asserting the design choice), and is documented in [`failure-protocol.md`](./failure-protocol.md) instead.
+`OmegaProof.lean`, `OmegaV14.lean`, and `OmegaP1Governance.lean` are axiom-free at the user level — they rely only on Lean's standard built-ins (`Eq.refl` / `propext` and friends introduced implicitly by tactics) and use only `Prop`, `∧`, `¬`, `fun`, and `Iff`. `OmegaP3Semantic.lean` is in a deliberately different posture: it models a concrete hash chain and introduces one `opaque` declaration — `compute_hash` (a SHA-256 placeholder, to be replaced by VCVio's verified implementation — see *Next step* below). It declares **no user axioms**: hash injectivity (not collision resistance) is carried as an explicit theorem hypothesis (`hash_cr`) discharged at each call site, so `tamper_detection` depends only on Lean built-ins (`#print axioms` → `[propext, Classical.choice, Quot.sound]`). The constructive core `tamper_implies_collision`, the encoding-injectivity theorem `canonicalBytes_injective_wf`, and the decoder roundtrip `decode_encode` likewise depend on no user axioms. `FailureProtocol.lean` carries no `sorry`: the monitoring obligation for excessive-retries-with-success is deliberately **not** encoded as a Lean theorem (it would require an axiom asserting the design choice), and is documented in [`failure-protocol.md`](./failure-protocol.md) instead.
 
 > **Soundness fix (2026-06-09):** the former second axiom
 > `canonicalBytes_injective` (unconditional injectivity of the canonical
@@ -155,8 +190,9 @@ See [`docs/ASSURANCE_BOUNDARY.md`](./docs/ASSURANCE_BOUNDARY.md) (aligned with [
 > (`compute_hash_collision_resistant`), so its `#print axioms` receipts no
 > longer match the source — in particular it showed
 > `tamper_detection` depending on `compute_hash_collision_resistant`, which
-> is no longer a declaration (collision resistance is now the explicit
-> hypothesis `hash_cr`). The current machine-checked status — toolchain
+> is no longer a declaration (it is replaced by the explicit hypothesis
+> `hash_cr`, which is hash *injectivity*, not collision resistance; see the
+> correction note near the top of this file). The current machine-checked status — toolchain
 > `v4.27.0`, **zero user-declared axioms** — is in *Verification status
 > (2026-06-12)* at the top of this file, and is re-derived on every push by
 > the workflow described in *Continuous Reproducibility*; run the commands there.
@@ -263,7 +299,7 @@ than no tick:
 
 ## Next step
 
-The next major step is to replace the `compute_hash` opaque declaration in `OmegaP3Semantic.lean` with the verified SHA-256 implementation from [VCVio](https://github.com/dtumad/VCV-io). VCVio's `LibSodium/SHA2.lean` slot is upstream-empty at v4.27.0; a future commit will wire it through (or via a local FFI module) once that slot is populated. After the substitution, `compute_hash` would no longer be an uninterpreted placeholder; collision resistance (carried as the explicit `hash_cr` hypothesis, **not** an axiom) would remain the irreducible cryptographic assumption.
+The next major step is to replace the `compute_hash` opaque declaration in `OmegaP3Semantic.lean` with the verified SHA-256 implementation from [VCVio](https://github.com/dtumad/VCV-io). VCVio's `LibSodium/SHA2.lean` slot is upstream-empty at v4.27.0; a future commit will wire it through (or via a local FFI module) once that slot is populated. After the substitution, `compute_hash` would no longer be an uninterpreted placeholder. `hash_cr` is an explicit hash-*injectivity* hypothesis (not collision resistance, and not an axiom); it cannot hold for SHA-256, so `tamper_detection` would still say nothing about SHA-256. The result to build on is `tamper_implies_collision`, which assumes nothing about the hash; collision resistance of SHA-256 would remain a separate computational assumption that is not expressed in the Lean development.
 
 ## Legacy path on the public site
 
