@@ -303,9 +303,9 @@ The next major step is to replace the `compute_hash` opaque declaration in `Omeg
 
 ## Legacy path on the public site
 
-The canonical downloadable v1.2 artifact remains at  
-`https://omegaprotocol.org/omega/formal-proof/omega_v12_lean4_proof.lean`  
-(this repository's `v12-source/` copy matches that file for provenance).
+The v1.2 artifact was once served at `omegaprotocol.org/omega/formal-proof/omega_v12_lean4_proof.lean`;
+that URL no longer resolves (404 on 2026-10-16). The byte-identical copy kept for provenance is
+[`v12-source/omega_v12_lean4_proof.lean`](./v12-source/omega_v12_lean4_proof.lean).
 
 ## Source file hashes (SHA-256, at 6aa9008)
 
